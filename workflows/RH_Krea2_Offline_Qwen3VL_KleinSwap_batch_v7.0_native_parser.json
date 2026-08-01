@@ -3720,18 +3720,12 @@
         },
         {
           "name": "prompt_language",
-          "type": "COMBO",
-          "widget": {
-            "name": "prompt_language"
-          },
+          "type": "STRING",
           "link": null
         },
         {
           "name": "aspect_ratio",
-          "type": "COMBO",
-          "widget": {
-            "name": "aspect_ratio"
-          },
+          "type": "STRING",
           "link": null
         },
         {
@@ -3832,18 +3826,12 @@
         },
         {
           "name": "prompt_language",
-          "type": "COMBO",
-          "widget": {
-            "name": "prompt_language"
-          },
+          "type": "STRING",
           "link": 30137
         },
         {
           "name": "aspect_ratio",
-          "type": "COMBO",
-          "widget": {
-            "name": "aspect_ratio"
-          },
+          "type": "STRING",
           "link": 30138
         },
         {
@@ -3894,8 +3882,6 @@
       },
       "widgets_values": [
         8,
-        "中文",
-        "16:9",
         "blurry face, deformed anatomy, extra fingers, low quality, watermark, text"
       ],
       "color": "#3a506b",

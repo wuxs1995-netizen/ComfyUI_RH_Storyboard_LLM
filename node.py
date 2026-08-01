@@ -599,8 +599,8 @@ class RH_OfflineStoryboardParser_Node:
             "required": {
                 "generated_text": ("STRING", {"forceInput": True}),
                 "scene_count": ("INT", {"default": 8, "min": 1, "max": 12, "forceInput": True}),
-                "prompt_language": (["中文", "English"], {"default": "中文", "forceInput": True}),
-                "aspect_ratio": (list(ASPECT_PRESETS.keys()), {"default": "16:9", "forceInput": True}),
+                "prompt_language": ("STRING", {"forceInput": True}),
+                "aspect_ratio": ("STRING", {"forceInput": True}),
                 "default_negative_prompt": (
                     "STRING",
                     {
