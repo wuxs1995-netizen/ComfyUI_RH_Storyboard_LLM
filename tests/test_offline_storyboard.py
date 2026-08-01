@@ -1,7 +1,11 @@
 import json
 import unittest
 
-from node import RH_OfflineStoryboardRequest_Node, parse_offline_storyboard_text
+from node import (
+    RH_OfflineStoryboardParser_Node,
+    RH_OfflineStoryboardRequest_Node,
+    parse_offline_storyboard_text,
+)
 
 
 class OfflineStoryboardParserTests(unittest.TestCase):
@@ -66,6 +70,12 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertIn('"scenes"', request)
         self.assertEqual((count, language, ratio), (4, "English", "16:9"))
         self.assertEqual((width, height), (1024, 576))
+
+    def test_parser_connection_types_match_request_outputs(self):
+        request_outputs = RH_OfflineStoryboardRequest_Node.RETURN_TYPES
+        parser_inputs = RH_OfflineStoryboardParser_Node.INPUT_TYPES()["required"]
+        self.assertEqual(request_outputs[2], parser_inputs["prompt_language"][0])
+        self.assertEqual(request_outputs[3], parser_inputs["aspect_ratio"][0])
 
 
 if __name__ == "__main__":
