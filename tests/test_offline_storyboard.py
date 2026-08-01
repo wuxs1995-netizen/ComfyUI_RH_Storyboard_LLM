@@ -107,6 +107,21 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         text_generate = next(node for node in workflow["nodes"] if node["type"] == "TextGenerate")
         self.assertIs(text_generate["widgets_values"][-1], True)
 
+    def test_bundled_workflow_has_no_rgthree_image_comparer(self):
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json"
+        )
+        workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+        comparer_nodes = [
+            node
+            for subgraph in workflow.get("definitions", {}).get("subgraphs", [])
+            for node in subgraph.get("nodes", [])
+            if node.get("type") == "Image Comparer (rgthree)"
+        ]
+        self.assertEqual(comparer_nodes, [])
+
 
 if __name__ == "__main__":
     unittest.main()

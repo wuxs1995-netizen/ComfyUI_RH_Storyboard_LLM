@@ -1,6 +1,6 @@
 {
   "id": "rh-krea2-offline-qwen3vl-native-parser-v70",
-  "revision": 12,
+  "revision": 13,
   "last_node_id": 102,
   "last_link_id": 30142,
   "nodes": [
@@ -4674,7 +4674,7 @@
         60
       ]
     },
-    "rh_workflow_version": "krea2image-batch-v7.0-offline-qwen3vl-native-parser",
+    "rh_workflow_version": "krea2image-batch-v7.1-offline-no-rgthree-temp",
     "rh_root_link_namespace": "300xx-rebuilt",
     "ue_links": [],
     "links_added_by_ue": [],
@@ -4729,6 +4729,22 @@
       "positive_preview": 95,
       "raw_qwen_preview": 101,
       "storyboard_json_preview": 102
+    },
+    "rh_asset_hygiene": {
+      "removed_node_type": "Image Comparer (rgthree)",
+      "reason": "prevent rgthree.compare._temp_* files from appearing in the asset library",
+      "removed": [
+        {
+          "subgraph": "Krea2Image Storyboard Batch v4",
+          "node_ids": [
+            92
+          ],
+          "link_ids": [
+            102,
+            137
+          ]
+        }
+      ]
     }
   },
   "version": 0.4,
@@ -6325,9 +6341,7 @@
               {
                 "name": "IMAGE",
                 "type": "IMAGE",
-                "links": [
-                  102
-                ]
+                "links": []
               }
             ],
             "title": "Get_BASE_IMG",
@@ -8267,69 +8281,6 @@
             "bgcolor": "#533"
           },
           {
-            "id": 92,
-            "type": "Image Comparer (rgthree)",
-            "pos": [
-              3045.7568491022676,
-              557.5340975663169
-            ],
-            "size": [
-              530.7337696022568,
-              581.284629027847
-            ],
-            "flags": {},
-            "order": 96,
-            "mode": 0,
-            "inputs": [
-              {
-                "dir": 3,
-                "name": "image_a",
-                "type": "IMAGE",
-                "link": 137
-              },
-              {
-                "dir": 3,
-                "name": "image_b",
-                "type": "IMAGE",
-                "link": 102
-              }
-            ],
-            "outputs": [
-              {
-                "dir": 4,
-                "name": "images",
-                "shape": 3,
-                "type": "IMAGE",
-                "links": []
-              }
-            ],
-            "properties": {
-              "cnr_id": "rgthree-comfy",
-              "ver": "1.0.2512112053",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "comparer_mode": "Slide",
-              "aux_id": "rgthree/rgthree-comfy"
-            },
-            "widgets_values": [
-              [
-                {
-                  "name": "A",
-                  "selected": true,
-                  "url": "/api/view?filename=rgthree.compare._temp_iosbi_00055_.png&type=temp&subfolder=&rand=0.2776277867799384"
-                },
-                {
-                  "name": "B",
-                  "selected": true,
-                  "url": "/api/view?filename=rgthree.compare._temp_iosbi_00056_.png&type=temp&subfolder=&rand=0.46135985476647745"
-                }
-              ]
-            ]
-          },
-          {
             "id": 186,
             "type": "Fast Groups Bypasser (rgthree)",
             "pos": [
@@ -8545,7 +8496,6 @@
                 "name": "IMAGE",
                 "type": "IMAGE",
                 "links": [
-                  137,
                   138
                 ]
               }
@@ -10244,22 +10194,6 @@
             "origin_slot": 0,
             "target_id": 75,
             "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
-            "id": 137,
-            "origin_id": 109,
-            "origin_slot": 0,
-            "target_id": 92,
-            "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
-            "id": 102,
-            "origin_id": 93,
-            "origin_slot": 0,
-            "target_id": 92,
-            "target_slot": 1,
             "type": "IMAGE"
           },
           {
