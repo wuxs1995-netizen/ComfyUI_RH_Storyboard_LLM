@@ -1,8 +1,8 @@
 {
   "id": "rh-krea2-offline-qwen3vl-native-parser-v70",
-  "revision": 14,
-  "last_node_id": 102,
-  "last_link_id": 30142,
+  "revision": 15,
+  "last_node_id": 105,
+  "last_link_id": 30151,
   "nodes": [
     {
       "id": 1,
@@ -27,7 +27,8 @@
           "links": [
             30037,
             30042,
-            30106
+            30106,
+            30149
           ]
         },
         {
@@ -3164,7 +3165,8 @@
           "name": "CLIP",
           "type": "CLIP",
           "links": [
-            30105
+            30105,
+            30148
           ]
         }
       ],
@@ -3371,26 +3373,26 @@
       },
       "widgets_values": [
         "",
-        1536,
+        3072,
         "on",
-        0.55,
-        48,
-        0.9,
+        0.2,
+        32,
+        0.8,
         0.05,
-        1.08,
+        1.05,
         0,
         0,
         false,
         true
       ],
-      "title": "本地 Qwen3VL 逐分镜生成｜每个镜头独立返回 JSON"
+      "title": "步骤1｜本地 Qwen3VL 生成统一人物设定 + 分镜大纲"
     },
     {
       "id": 95,
       "type": "PreviewAny",
-      "title": "最终正向提示词列表｜实际批量送入 Krea",
+      "title": "最终正向提示词列表｜每条均含完全相同人物锚点",
       "pos": [
-        2140,
+        3130,
         4810
       ],
       "size": [
@@ -3604,7 +3606,7 @@
     {
       "id": 99,
       "type": "RH_OFFLINE_STORYBOARD_REQUEST",
-      "title": "离线 Qwen3VL 分镜导演｜故事 / 数量 / 语言 / 横宽比",
+      "title": "步骤1｜锁定统一人物设定与分镜大纲",
       "pos": [
         500,
         4810
@@ -3654,7 +3656,7 @@
       ],
       "outputs": [
         {
-          "name": "qwen_prompts",
+          "name": "qwen_prompt",
           "type": "STRING",
           "links": [
             30134
@@ -3706,7 +3708,7 @@
         8,
         "中文",
         "16:9",
-        "You are a local cinematic storyboard director and Krea 2 prompt engineer. Turn the supplied story into a chronological storyboard with exactly the requested number of scenes. Keep character identity, face, age, hairstyle, clothing, props, environment, time, weather and visual style consistent. Each scene must contain one clear visual action and a production-ready image prompt with shot size, camera angle, composition, lighting, environment, emotion and material detail. Use the optional reference image only for character identity and appearance; never copy its background or pose. Return valid JSON only. Do not use Markdown, explanations, comments or text outside the JSON object."
+        "You are a local cinematic storyboard continuity director.\nFirst create one canonical character bible from the story and optional reference image, then create a chronological scene outline.\nThe character's identity, face, age, hairstyle, hair accessories, clothing and signature props are IMMUTABLE across every scene unless the story explicitly requires a change.\nLocation, action, emotion, shot size, camera angle, composition, lighting, time and weather are MUTABLE scene variables.\nUse the optional reference image only for character identity and appearance; never copy its background or pose.\nReturn valid JSON only. Do not use Markdown, explanations, comments or text outside the JSON object."
       ],
       "color": "#2d4059",
       "bgcolor": "#3f5875"
@@ -3714,14 +3716,14 @@
     {
       "id": 100,
       "type": "RH_OFFLINE_STORYBOARD_PARSER",
-      "title": "离线 Qwen3VL 分镜解析器｜JSON / 编号文本 → 批量提示词",
+      "title": "步骤3｜注入统一人物锚点 → 批量提示词",
       "pos": [
-        1640,
+        2620,
         4810
       ],
       "size": [
         470,
-        300
+        340
       ],
       "flags": {},
       "order": 100,
@@ -3730,7 +3732,7 @@
         {
           "name": "generated_text",
           "type": "STRING",
-          "link": 30135
+          "link": 30150
         },
         {
           "name": "scene_count",
@@ -3738,17 +3740,17 @@
           "widget": {
             "name": "scene_count"
           },
-          "link": 30136
+          "link": 30145
         },
         {
           "name": "prompt_language",
           "type": "STRING",
-          "link": 30137
+          "link": 30146
         },
         {
           "name": "aspect_ratio",
           "type": "STRING",
-          "link": 30138
+          "link": 30147
         },
         {
           "name": "default_negative_prompt",
@@ -3757,6 +3759,11 @@
             "name": "default_negative_prompt"
           },
           "link": null
+        },
+        {
+          "name": "outline_json",
+          "type": "STRING",
+          "link": 30144
         }
       ],
       "outputs": [
@@ -3806,7 +3813,7 @@
     {
       "id": 101,
       "type": "PreviewAny",
-      "title": "Qwen3VL 原始输出预览｜用于检查模型是否返回完整 JSON",
+      "title": "步骤1输出预览｜统一 character_bible + 分镜大纲",
       "pos": [
         1160,
         5290
@@ -3844,9 +3851,9 @@
     {
       "id": 102,
       "type": "PreviewAny",
-      "title": "已解析 Storyboard JSON｜确认实际分镜数量和内容",
+      "title": "步骤3解析结果｜检查 character_anchor 与每镜头 prompt",
       "pos": [
-        1640,
+        2620,
         5290
       ],
       "size": [
@@ -3861,6 +3868,331 @@
           "name": "source",
           "type": "*",
           "link": 30142
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.29.2",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "color": "#243b53",
+      "bgcolor": "#35556f"
+    },
+    {
+      "id": 103,
+      "type": "RH_OFFLINE_STORYBOARD_SCENE_REQUESTS",
+      "title": "步骤2｜共享人物锁定 → 逐分镜请求",
+      "pos": [
+        1600,
+        4810
+      ],
+      "size": [
+        540,
+        430
+      ],
+      "flags": {},
+      "order": 86,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "outline_text",
+          "type": "STRING",
+          "link": 30135
+        },
+        {
+          "name": "scene_count",
+          "type": "INT",
+          "link": 30136
+        },
+        {
+          "name": "prompt_language",
+          "type": "STRING",
+          "link": 30137
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "STRING",
+          "link": 30138
+        },
+        {
+          "name": "scene_instruction",
+          "type": "STRING",
+          "widget": {
+            "name": "scene_instruction"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "qwen_prompts",
+          "type": "STRING",
+          "links": [
+            30143
+          ]
+        },
+        {
+          "name": "outline_json",
+          "type": "STRING",
+          "links": [
+            30144
+          ]
+        },
+        {
+          "name": "scene_count",
+          "type": "INT",
+          "links": [
+            30145
+          ]
+        },
+        {
+          "name": "prompt_language",
+          "type": "STRING",
+          "links": [
+            30146
+          ]
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "STRING",
+          "links": [
+            30147
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RH_OFFLINE_STORYBOARD_SCENE_REQUESTS",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "You are a cinematic Krea 2 prompt engineer.\nGenerate exactly one production-ready image prompt for the supplied scene package.\nTreat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.\nDescribe only the current scene's mutable action, emotion, environment, camera, composition and lighting.\nReturn valid JSON only. Do not use Markdown or commentary."
+      ],
+      "color": "#2d4059",
+      "bgcolor": "#3f5875"
+    },
+    {
+      "id": 104,
+      "type": "TextGenerate",
+      "pos": [
+        2180,
+        4810
+      ],
+      "size": [
+        400,
+        412
+      ],
+      "flags": {},
+      "order": 87,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "clip",
+          "name": "clip",
+          "type": "CLIP",
+          "link": 30148
+        },
+        {
+          "localized_name": "图像",
+          "name": "image",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 30149
+        },
+        {
+          "localized_name": "视频",
+          "name": "video",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "音频",
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "localized_name": "提示词",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 30143
+        },
+        {
+          "localized_name": "最大长度",
+          "name": "max_length",
+          "type": "INT",
+          "widget": {
+            "name": "max_length"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "采样模式",
+          "name": "sampling_mode",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "sampling_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "温度",
+          "name": "sampling_mode.temperature",
+          "type": "FLOAT",
+          "widget": {
+            "name": "sampling_mode.temperature"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "Top K",
+          "name": "sampling_mode.top_k",
+          "type": "INT",
+          "widget": {
+            "name": "sampling_mode.top_k"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "Top P",
+          "name": "sampling_mode.top_p",
+          "type": "FLOAT",
+          "widget": {
+            "name": "sampling_mode.top_p"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "最小概率",
+          "name": "sampling_mode.min_p",
+          "type": "FLOAT",
+          "widget": {
+            "name": "sampling_mode.min_p"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "重复惩罚",
+          "name": "sampling_mode.repetition_penalty",
+          "type": "FLOAT",
+          "widget": {
+            "name": "sampling_mode.repetition_penalty"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "种子",
+          "name": "sampling_mode.seed",
+          "type": "INT",
+          "widget": {
+            "name": "sampling_mode.seed"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "presence_penalty",
+          "name": "sampling_mode.presence_penalty",
+          "shape": 7,
+          "type": "FLOAT",
+          "widget": {
+            "name": "sampling_mode.presence_penalty"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "思考模式",
+          "name": "thinking",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "thinking"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "use_default_template",
+          "name": "use_default_template",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "use_default_template"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "生成文本",
+          "name": "generated_text",
+          "type": "STRING",
+          "links": [
+            30150,
+            30151
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.26.0",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        },
+        "Node name for S&R": "TextGenerate"
+      },
+      "widgets_values": [
+        "",
+        1536,
+        "on",
+        0.25,
+        32,
+        0.82,
+        0.05,
+        1.05,
+        0,
+        0,
+        false,
+        true
+      ],
+      "title": "步骤2｜本地 Qwen3VL 按统一人物设定逐镜生成"
+    },
+    {
+      "id": 105,
+      "type": "PreviewAny",
+      "title": "步骤2原始输出预览｜逐分镜 JSON",
+      "pos": [
+        2180,
+        5290
+      ],
+      "size": [
+        450,
+        360
+      ],
+      "flags": {},
+      "order": 103,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 30151
         }
       ],
       "outputs": [
@@ -4453,7 +4785,7 @@
       30135,
       85,
       0,
-      100,
+      103,
       0,
       "STRING"
     ],
@@ -4461,7 +4793,7 @@
       30136,
       99,
       1,
-      100,
+      103,
       1,
       "INT"
     ],
@@ -4469,7 +4801,7 @@
       30137,
       99,
       2,
-      100,
+      103,
       2,
       "STRING"
     ],
@@ -4477,7 +4809,7 @@
       30138,
       99,
       3,
-      100,
+      103,
       3,
       "STRING"
     ],
@@ -4510,6 +4842,78 @@
       100,
       2,
       102,
+      0,
+      "STRING"
+    ],
+    [
+      30143,
+      103,
+      0,
+      104,
+      4,
+      "STRING"
+    ],
+    [
+      30144,
+      103,
+      1,
+      100,
+      5,
+      "STRING"
+    ],
+    [
+      30145,
+      103,
+      2,
+      100,
+      1,
+      "INT"
+    ],
+    [
+      30146,
+      103,
+      3,
+      100,
+      2,
+      "STRING"
+    ],
+    [
+      30147,
+      103,
+      4,
+      100,
+      3,
+      "STRING"
+    ],
+    [
+      30148,
+      82,
+      0,
+      104,
+      0,
+      "CLIP"
+    ],
+    [
+      30149,
+      1,
+      0,
+      104,
+      1,
+      "IMAGE"
+    ],
+    [
+      30150,
+      104,
+      0,
+      100,
+      0,
+      "STRING"
+    ],
+    [
+      30151,
+      104,
+      0,
+      105,
       0,
       "STRING"
     ]
@@ -4553,11 +4957,11 @@
     },
     {
       "id": 32,
-      "title": "本地 Qwen3VL 原生离线分镜｜Request → TextGenerate → RH Parser",
+      "title": "本地 Qwen3VL 两阶段人物锁定分镜｜Plan → Locked Scenes → Parser",
       "bounding": [
         40,
         4720,
-        3060,
+        4050,
         1000
       ],
       "color": "#4b5f89",
@@ -4573,7 +4977,7 @@
         60
       ]
     },
-    "rh_workflow_version": "krea2image-batch-v7.2-offline-no-temp-previews",
+    "rh_workflow_version": "krea2image-batch-v7.3-offline-two-pass-character-lock",
     "rh_root_link_namespace": "300xx-rebuilt",
     "ue_links": [],
     "links_added_by_ue": [],
@@ -4659,6 +5063,39 @@
         ]
       },
       "final_image_ui": "SaveImage node 80 only; prevents ComfyUI_temp_* preview assets"
+    },
+    "rh_character_continuity": {
+      "pipeline": "plan character_bible once -> shared locked scene requests -> parser hard-prefix",
+      "immutable": [
+        "identity",
+        "age",
+        "facial_features",
+        "hairstyle",
+        "hair_accessories",
+        "clothing",
+        "signature_props"
+      ],
+      "mutable": [
+        "location",
+        "time",
+        "action",
+        "emotion",
+        "shot_type",
+        "camera",
+        "lighting"
+      ],
+      "plan_sampling": {
+        "max_length": 3072,
+        "temperature": 0.2,
+        "top_k": 32,
+        "top_p": 0.8
+      },
+      "scene_sampling": {
+        "max_length": 1536,
+        "temperature": 0.25,
+        "top_k": 32,
+        "top_p": 0.82
+      }
     }
   },
   "version": 0.4,
