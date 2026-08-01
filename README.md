@@ -59,7 +59,7 @@ The parser raises a clear error when the local model returns fewer usable prompt
 
 ### RH Storyboard - Save Numbered Scenes
 
-Saves mapped image lists with explicit scene-number paths such as `RH_Krea2_Offline_Storyboard/Scene_01_00001_.png`, making the corresponding storyboard shot visible in ComfyUI's asset list and on disk.
+Saves mapped image lists directly in the output root with explicit names such as `RH_Krea2_Offline_Storyboard_Scene_01_00001_.png`, making the corresponding storyboard shot visible in ComfyUI's asset list and on disk. The saver is forced to run on every queue; an empty final image route now raises an error instead of silently returning no assets.
 
 ### RH Storyboard - Select Scene Prompt
 

@@ -228,7 +228,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
     def test_numbered_scene_save_prefix(self):
         self.assertEqual(
             _scene_save_prefix("RH_Krea2_Offline_Storyboard", 3),
-            "RH_Krea2_Offline_Storyboard/Scene_03",
+            "RH_Krea2_Offline_Storyboard_Scene_03",
         )
 
     def test_bundled_qwen_workflow_enables_default_template(self):

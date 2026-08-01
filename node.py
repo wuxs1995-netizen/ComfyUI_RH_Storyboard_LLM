@@ -285,7 +285,7 @@ def _locked_prompt(prompt, character_bible, style_bible, aspect_ratio, prompt_la
 
 def _scene_save_prefix(base_prefix, scene_number):
     base = str(base_prefix or "RH_Storyboard").strip().strip("/\\") or "RH_Storyboard"
-    return f"{base}/Scene_{int(scene_number):02d}"
+    return f"{base}_Scene_{int(scene_number):02d}"
 
 
 def _extract_first_json_value(value):
@@ -1048,6 +1048,10 @@ class RH_StoryboardSceneSave_Node:
     INPUT_IS_LIST = True
     CATEGORY = "Runninghub/Storyboard"
 
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        return float("nan")
+
     def save_images(
         self,
         images,
@@ -1086,6 +1090,10 @@ class RH_StoryboardSceneSave_Node:
                 )
                 saved.extend(result.get("ui", {}).get("images", []))
                 scene_number += 1
+        if not saved:
+            raise ValueError(
+                "Numbered scene saver received no final images. Check the final Klein/Krea route switch."
+            )
         return {"ui": {"images": saved}}
 
 
