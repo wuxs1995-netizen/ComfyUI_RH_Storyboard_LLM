@@ -6,6 +6,10 @@ This repository is based on [`HM-RunningHub/ComfyUI_RH_LLM_API`](https://github.
 
 ## Nodes
 
+### RH Storyboard - Configurable Director
+
+Runs the complete director pipeline from one node. Choose 1–12 scenes, Chinese or English final prompts, and a common aspect ratio. The node generates the outline, fans out the per-scene LLM calls, and returns positive/negative prompt lists plus width and height outputs that can connect to a latent-image node.
+
 ### Runninghub LLM API Node
 
 Makes one OpenAI-compatible chat-completions request. It supports text, an optional reference image, or an optional video.
@@ -34,6 +38,10 @@ Outputs:
 - `scene_count`: the number of generated scenes.
 
 The prompt lists can be connected to text-encoding and image-generation nodes. ComfyUI maps downstream execution across list elements.
+
+### RH Storyboard - Select Scene Prompt
+
+Takes the combined `storyboard_json` output and selects one scene by number. It returns separate positive prompt, negative prompt, camera, continuity note and shot JSON outputs. Duplicate this node for each visible storyboard branch when you want every scene connected to its own preview or image-generation workflow.
 
 ## Expected director JSON
 
@@ -86,11 +94,26 @@ supervisorctl restart comfyui
 
 After restarting ComfyUI, hard-refresh the browser and search for `RH Storyboard`.
 
-## Demo workflow
+## Bundled workflows
 
-Import [`workflows/RH_parallel_storyboard_demo.json`](workflows/RH_parallel_storyboard_demo.json). Add a new API key locally after importing; the workflow intentionally contains no API key.
+- [`workflows/RH_parallel_storyboard_demo.json`](workflows/RH_parallel_storyboard_demo.json) demonstrates the parallel prompt pipeline with eight separate scene previews.
+- [`workflows/RH_configurable_director_1_to_12_scenes.json`](workflows/RH_configurable_director_1_to_12_scenes.json) adds selectable scene count, prompt language and aspect ratio, with up to twelve independently connectable scene branches.
+- [`workflows/RH_configurable_director_Krea2Image_batch.json`](workflows/RH_configurable_director_Krea2Image_batch.json) maps the generated prompt list through the bundled Krea2Image subgraph definition, exposes `📐 Resolution Master` in the main configuration area for the actual generation width and height, removes the original list-incompatible metadata saver, and saves the resulting storyboard images through an external list-safe `SaveImage` node.
+- [`workflows/RH_configurable_director_Krea2Image_ReActor_batch.json`](workflows/RH_configurable_director_Krea2Image_ReActor_batch.json) keeps the Krea2Image batch workflow and adds an enabled-by-default `ReActorFaceSwap` identity pass. The same uploaded character reference is sent to the director and broadcast as the ReActor source image for every generated storyboard frame. Separate previews show the swapped result, the original Krea image, and the Krea base image. Version 5.3 exports the workflow with ComfyUI schema version `0.4` for frontend link-rendering compatibility and uses the dedicated `30001+` namespace for root links so they cannot collide with links inside the bundled Krea subgraphs.
 
-The demo stops at the ordered positive/negative prompt lists because checkpoint, conditioning, and sampler choices differ between installations. Connect those list outputs to your preferred image-generation pipeline to render one frame per scene.
+Add a new API key locally after importing any workflow; exported workflow files intentionally contain no API key. The Krea2Image workflow also requires the models and custom nodes used by the original Krea2Image blueprint to be installed on the ComfyUI instance.
+
+The ReActor workflow additionally requires [`ComfyUI-ReActor`](https://github.com/Gourieff/ComfyUI-ReActor) and `inswapper_128.onnx`. The default InsightFace/inswapper weights commonly carry non-commercial research restrictions; verify the model license before commercial use.
+
+## Troubleshooting hidden links
+
+If every node socket is connected but no wires are visible, the workflow JSON may still be valid. ComfyUI has a global `Comfy.LinkRenderMode` setting that can hide links across every workflow.
+
+- Click the link-visibility button in the canvas toolbar; when links are hidden, its action is **Show Links**.
+- Or open Settings and change **Link Render Mode** from **Hidden** to **Spline**, **Linear**, or **Straight**.
+- Hard-refresh the browser after changing the setting.
+
+This is a browser/user display setting, not a per-workflow connection setting.
 
 ## Security
 
