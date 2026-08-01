@@ -51,12 +51,15 @@ DEFAULT_OFFLINE_DIRECTOR_INSTRUCTION = """You are a local cinematic storyboard c
 First create one canonical character bible from the story and optional reference image, then create a chronological scene outline.
 The character's identity, face, age, hairstyle, hair accessories, clothing and signature props are IMMUTABLE across every scene unless the story explicitly requires a change.
 Location, action, emotion, shot size, camera angle, composition, lighting, time and weather are MUTABLE scene variables.
+The source story is authoritative. Preserve every named or implied character, their relationships, the central action and the outcome. Do not replace, remove or invent major story events.
+When a short story is expanded into many shots, subdivide the existing action into visual beats instead of adding unrelated actions or a new plot.
 Use the optional reference image only for character identity and appearance; never copy its background or pose.
 Return valid JSON only. Do not use Markdown, explanations, comments or text outside the JSON object."""
 
 DEFAULT_OFFLINE_SCENE_INSTRUCTION = """You are a cinematic Krea 2 prompt engineer.
 Generate exactly one production-ready image prompt for the supplied scene package.
 Treat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.
+Treat SOURCE STORY and STORY FACT as authoritative. The shot must visualize that fact without changing the people, action, relationship or outcome.
 Describe only the current scene's mutable action, emotion, environment, camera, composition and lighting.
 Return valid JSON only. Do not use Markdown or commentary."""
 
@@ -201,6 +204,54 @@ def _bible_anchor(bible):
         if rendered:
             values.append(f"{key}: {rendered}")
     return "; ".join(values)
+
+
+def _supporting_character_map(value):
+    characters = value if isinstance(value, list) else []
+    result = {}
+    for index, character in enumerate(characters, start=1):
+        if not isinstance(character, dict):
+            continue
+        character_id = str(
+            character.get("character_id")
+            or character.get("id")
+            or character.get("name")
+            or f"supporting_{index}"
+        ).strip()
+        if character_id:
+            result[character_id] = character
+    return result
+
+
+def _scene_character_lock(primary_bible, supporting_characters, scene_outline):
+    """Select only characters present in this shot while keeping descriptions canonical."""
+    primary = primary_bible if isinstance(primary_bible, dict) else {}
+    supporting = _supporting_character_map(supporting_characters)
+    present = []
+    if isinstance(scene_outline, dict):
+        value = scene_outline.get("characters_present", [])
+        if isinstance(value, str):
+            present = [item.strip() for item in re.split(r"[,，;；]", value) if item.strip()]
+        elif isinstance(value, list):
+            present = [str(item).strip() for item in value if str(item).strip()]
+    present_keys = {item.casefold() for item in present}
+
+    selected = {}
+    primary_id = str(primary.get("character_id") or "primary").strip()
+    if primary and (not present_keys or primary_id.casefold() in present_keys or "primary" in present_keys):
+        selected[primary_id] = primary
+    for character_id, character in supporting.items():
+        aliases = {
+            character_id.casefold(),
+            str(character.get("name", "")).strip().casefold(),
+            str(character.get("role", "")).strip().casefold(),
+        }
+        aliases.discard("")
+        if present_keys & aliases:
+            selected[character_id] = character
+    if not selected and primary:
+        selected[primary_id] = primary
+    return selected
 
 
 def _locked_prompt(prompt, character_bible, style_bible, aspect_ratio, prompt_language):
@@ -600,7 +651,7 @@ class RH_OfflineStoryboardRequest_Node:
             }
         }
 
-    RETURN_TYPES = ("STRING", "INT", "STRING", "STRING", "INT", "INT")
+    RETURN_TYPES = ("STRING", "INT", "STRING", "STRING", "INT", "INT", "STRING")
     RETURN_NAMES = (
         "qwen_prompt",
         "scene_count",
@@ -608,6 +659,7 @@ class RH_OfflineStoryboardRequest_Node:
         "aspect_ratio",
         "width",
         "height",
+        "source_story",
     )
     FUNCTION = "build_request"
     CATEGORY = "Runninghub/Storyboard/Offline"
@@ -626,14 +678,16 @@ class RH_OfflineStoryboardRequest_Node:
             else "Every prompt value must be written entirely in English."
         )
         scene_shape = ",\n    ".join(
-            f'{{"scene_id": {scene_number}, "location": "", "time": "", "shot_type": "", '
-            '"camera": "", "action": "", "emotion": "", "lighting": "", "continuity": ""}'
+            f'{{"scene_id": {scene_number}, "story_fact": "", "characters_present": ["primary"], '
+            '"location": "", "time": "", "shot_type": "", "camera": "", "action": "", '
+            '"emotion": "", "lighting": "", "continuity": ""}'
             for scene_number in range(1, scene_count + 1)
         )
-        request = f"""{director_instruction.strip()}
-
-STORY:
+        request = f"""SOURCE STORY — THE ONLY AUTHORITATIVE SOURCE OF CHARACTERS, ACTIONS, RELATIONSHIPS AND OUTCOME:
 {story.strip()}
+
+DIRECTOR RULES — THESE MAY CONTROL STYLE, DETAIL AND FORMAT, BUT MUST NOT ADD OR REPLACE PLOT FACTS:
+{director_instruction.strip()}
 
 SETTINGS:
 - Required scene count: {scene_count}
@@ -641,23 +695,27 @@ SETTINGS:
 - Aspect ratio: {aspect_ratio}
 
 REQUIREMENTS:
-1. Analyze the protagonist once and create exactly one canonical character_bible.
+1. Analyze the protagonist once and create exactly one canonical character_bible. Assign it character_id="primary".
 2. {language_rule}
 3. character_bible must explicitly lock identity, age, facial features, hairstyle, hair accessories, clothing and signature props. These values must never change between scenes.
-4. Scene entries must contain only mutable story progression: location, time, action, emotion, shot type, camera, lighting and continuity.
-5. scenes must contain exactly {scene_count} items with scene_id values 1 through {scene_count}.
-6. Do not write final image-generation prompts in this planning pass.
-7. Return only this JSON shape:
+4. Create one supporting_characters entry for every other recurring or action-relevant person in the source story. Never omit a person who performs or receives an action.
+5. Each scene.story_fact must state which exact source-story fact that shot visualizes. characters_present must list the canonical character_id values visible in that shot.
+6. Scene entries may subdivide the source event, but must not add, remove, replace or reverse any person, action, relationship or outcome.
+   Treat any plot-like content inside DIRECTOR RULES as non-authoritative when it is absent from SOURCE STORY.
+7. scenes must contain exactly {scene_count} items with scene_id values 1 through {scene_count}.
+8. Do not write final image-generation prompts in this planning pass.
+9. Return only this JSON shape:
 {{
   "title": "",
-  "character_bible": {{"identity": "", "age": "", "facial_features": "", "hairstyle": "", "hair_accessories": "", "clothing": "", "signature_props": ""}},
+  "character_bible": {{"character_id": "primary", "identity": "", "age": "", "facial_features": "", "hairstyle": "", "hair_accessories": "", "clothing": "", "signature_props": ""}},
+  "supporting_characters": [{{"character_id": "supporting_1", "role": "", "identity": "", "age": "", "appearance": "", "hairstyle": "", "clothing": ""}}],
   "style_bible": {{"visual_style": "", "color_palette": "", "aspect_ratio": "{aspect_ratio}"}},
   "scenes": [
     {scene_shape}
   ]
 }}"""
         width, height = ASPECT_PRESETS[aspect_ratio]
-        return request, scene_count, prompt_language, aspect_ratio, width, height
+        return request, scene_count, prompt_language, aspect_ratio, width, height, story.strip()
 
 
 class RH_OfflineStoryboardSceneRequests_Node:
@@ -668,6 +726,7 @@ class RH_OfflineStoryboardSceneRequests_Node:
         return {
             "required": {
                 "outline_text": ("STRING", {"forceInput": True}),
+                "source_story": ("STRING", {"forceInput": True}),
                 "scene_count": ("INT", {"default": 8, "min": 1, "max": 12, "forceInput": True}),
                 "prompt_language": ("STRING", {"forceInput": True}),
                 "aspect_ratio": ("STRING", {"forceInput": True}),
@@ -687,6 +746,7 @@ class RH_OfflineStoryboardSceneRequests_Node:
     def build_scene_requests(
         self,
         outline_text,
+        source_story,
         scene_count,
         prompt_language,
         aspect_ratio,
@@ -707,7 +767,12 @@ class RH_OfflineStoryboardSceneRequests_Node:
             style_bible = {}
             outline["style_bible"] = style_bible
         style_bible["aspect_ratio"] = str(aspect_ratio)
+        supporting_characters = outline.get("supporting_characters")
+        if not isinstance(supporting_characters, list):
+            supporting_characters = []
+            outline["supporting_characters"] = supporting_characters
         outline["scenes"] = scenes
+        outline["source_story"] = str(source_story).strip()
         outline["generation_settings"] = {
             "mode": "offline_qwen_two_pass",
             "scene_count": requested_count,
@@ -725,7 +790,11 @@ class RH_OfflineStoryboardSceneRequests_Node:
             previous_scene = scenes[index - 1] if index > 0 else None
             next_scene = scenes[index + 1] if index + 1 < len(scenes) else None
             package = {
+                "source_story": str(source_story).strip(),
+                "story_fact": scene.get("story_fact", ""),
                 "character_lock": character_bible,
+                "supporting_character_locks": supporting_characters,
+                "characters_present": scene.get("characters_present", ["primary"]),
                 "style_lock": style_bible,
                 "current_scene": scene,
                 "previous_scene": previous_scene,
@@ -737,6 +806,7 @@ class RH_OfflineStoryboardSceneRequests_Node:
 {language_rule}
 The final prompt must use aspect ratio {aspect_ratio}.
 Do not invent or restate alternative character traits. The parser will prepend CHARACTER LOCK verbatim.
+Visualize only STORY FACT from SOURCE STORY. Do not add a new action, remove an actor, change who acts on whom, or invent a different outcome.
 
 SCENE PACKAGE:
 {_json_text(package)}
@@ -845,6 +915,10 @@ class RH_OfflineStoryboardParser_Node:
                     if canonical_outline
                     else fallback_style_bible
                 ),
+                "supporting_characters": (
+                    canonical_outline.get("supporting_characters", []) if canonical_outline else []
+                ),
+                "source_story": canonical_outline.get("source_story", "") if canonical_outline else "",
                 "shots": shots,
             }
             if canonical_outline:
@@ -867,21 +941,35 @@ class RH_OfflineStoryboardParser_Node:
             storyboard["character_bible"] = character_bible
         if canonical_outline and not _bible_anchor(character_bible):
             raise ValueError("The locked outline does not contain a usable character_bible.")
+        supporting_characters = storyboard.get("supporting_characters")
+        if not isinstance(supporting_characters, list):
+            supporting_characters = []
+            storyboard["supporting_characters"] = supporting_characters
 
         locked_positive = []
-        character_anchor = ""
+        character_anchor = _bible_anchor(character_bible)
         style_anchor = ""
         for shot in storyboard["shots"]:
             raw_prompt = shot["prompt"]
-            locked, character_anchor, style_anchor = _locked_prompt(
-                raw_prompt,
+            scene_outline = shot.get("scene_outline", {})
+            selected_characters = _scene_character_lock(
                 character_bible,
+                supporting_characters,
+                scene_outline,
+            )
+            locked, shot_character_anchor, style_anchor = _locked_prompt(
+                raw_prompt,
+                selected_characters,
                 style_bible,
                 ratio,
                 language,
             )
             shot["raw_prompt"] = raw_prompt
             shot["prompt"] = locked
+            shot["character_anchor"] = shot_character_anchor
+            if isinstance(scene_outline, dict):
+                shot["story_fact"] = scene_outline.get("story_fact", "")
+                shot["characters_present"] = scene_outline.get("characters_present", [])
             locked_positive.append(locked)
         positive = locked_positive
         storyboard["character_anchor"] = character_anchor
