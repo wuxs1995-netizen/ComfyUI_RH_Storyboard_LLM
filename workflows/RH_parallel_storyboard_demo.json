@@ -1,0 +1,189 @@
+{
+  "id": "rh-parallel-storyboard-demo",
+  "revision": 0,
+  "last_node_id": 10,
+  "last_link_id": 10,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": [40, 20],
+      "size": [270, 314],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [1, 7]},
+        {"name": "MASK", "type": "MASK", "links": null}
+      ],
+      "properties": {"cnr_id": "comfy-core", "ver": "0.29.2", "Node name for S&R": "LoadImage"},
+      "widgets_values": ["121909_00001_.png", "image"]
+    },
+    {
+      "id": 2,
+      "type": "PrimitiveStringMultiline",
+      "pos": [40, 390],
+      "size": [400, 180],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "STRING", "type": "STRING", "links": [3]}],
+      "properties": {"cnr_id": "comfy-core", "ver": "0.29.2", "Node name for S&R": "PrimitiveStringMultiline"},
+      "widgets_values": ["宋代女孩在雨夜发现一封来自未来的信。生成 8 个连续、适合电影分镜的场景。"]
+    },
+    {
+      "id": 3,
+      "type": "PrimitiveStringMultiline",
+      "pos": [40, 620],
+      "size": [500, 500],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "STRING", "type": "STRING", "links": [2]}],
+      "properties": {"cnr_id": "comfy-core", "ver": "0.29.2", "Node name for S&R": "PrimitiveStringMultiline"},
+      "widgets_values": ["你是影视分镜总导演。根据用户主题和参考人物，创作一个由 8 个镜头组成的短片大纲。保持主角外貌、服装、年龄一致；每个镜头只描述一个明确动作；镜头之间连续。只输出合法 JSON，不要解释，不要使用 Markdown。输出结构必须为：{\"title\":\"\",\"character_bible\":{\"appearance\":\"\",\"clothing\":\"\",\"identity\":\"\"},\"style_bible\":{\"visual_style\":\"\",\"color_palette\":\"\",\"aspect_ratio\":\"16:9\"},\"scenes\":[{\"scene_id\":1,\"duration\":4,\"location\":\"\",\"time\":\"\",\"shot_type\":\"\",\"camera\":\"\",\"action\":\"\",\"emotion\":\"\",\"dialogue\":\"\",\"continuity\":\"\"}]}"]
+    },
+    {
+      "id": 4,
+      "type": "RH_LLMAPI_NODE",
+      "pos": [620, 250],
+      "size": [430, 350],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"name": "ref_image", "shape": 7, "type": "IMAGE", "link": 1},
+        {"name": "video", "shape": 7, "type": "VIDEO", "link": null},
+        {"name": "role", "type": "STRING", "widget": {"name": "role"}, "link": 2},
+        {"name": "prompt", "type": "STRING", "widget": {"name": "prompt"}, "link": 3}
+      ],
+      "outputs": [{"name": "describe", "type": "STRING", "links": [4, 5, 6]}],
+      "properties": {"aux_id": "HM-RunningHub/ComfyUI_RH_LLM_API", "Node name for S&R": "RH_LLMAPI_NODE"},
+      "widgets_values": ["http://118.145.119.140:18080/v1", "", "gpt-5.6-luna", "", "", 0.35, 100]
+    },
+    {
+      "id": 5,
+      "type": "PreviewAny",
+      "pos": [1120, 20],
+      "size": [620, 420],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [{"name": "source", "type": "*", "link": 4}],
+      "outputs": [{"name": "STRING", "type": "STRING", "links": null}],
+      "properties": {"cnr_id": "comfy-core", "ver": "0.29.2", "Node name for S&R": "PreviewAny"},
+      "widgets_values": []
+    },
+    {
+      "id": 6,
+      "type": "RH_SCENE_JSON_SPLITTER",
+      "pos": [1120, 500],
+      "size": [390, 180],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [{"name": "outline_json", "type": "STRING", "link": 5}],
+      "outputs": [
+        {"name": "scene_package", "type": "STRING", "links": [8]},
+        {"name": "scene_json", "type": "STRING", "links": null},
+        {"name": "character_bible", "type": "STRING", "links": null},
+        {"name": "style_bible", "type": "STRING", "links": null},
+        {"name": "scene_count", "type": "INT", "links": null}
+      ],
+      "properties": {"Node name for S&R": "RH_SCENE_JSON_SPLITTER"},
+      "widgets_values": [1]
+    },
+    {
+      "id": 7,
+      "type": "PreviewAny",
+      "pos": [1570, 500],
+      "size": [560, 360],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [{"name": "source", "type": "*", "link": 8}],
+      "outputs": [{"name": "STRING", "type": "STRING", "links": null}],
+      "properties": {"cnr_id": "comfy-core", "ver": "0.29.2", "Node name for S&R": "PreviewAny"},
+      "widgets_values": []
+    },
+    {
+      "id": 8,
+      "type": "RH_MULTI_SCENE_LLM",
+      "pos": [1120, 940],
+      "size": [500, 690],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"name": "outline_json", "type": "STRING", "link": 6},
+        {"name": "ref_image", "shape": 7, "type": "IMAGE", "link": 7}
+      ],
+      "outputs": [
+        {"name": "positive_prompts", "type": "STRING", "links": [10], "shape": 6},
+        {"name": "negative_prompts", "type": "STRING", "links": null, "shape": 6},
+        {"name": "storyboard_json", "type": "STRING", "links": [9]},
+        {"name": "scene_count", "type": "INT", "links": null}
+      ],
+      "properties": {"Node name for S&R": "RH_MULTI_SCENE_LLM"},
+      "widgets_values": [
+        "http://118.145.119.140:18080/v1",
+        "",
+        "gpt-5.6-luna",
+        "You are a professional cinematic storyboard prompt writer. Turn exactly one scene into a production-ready image-generation prompt. Preserve the shared character and visual style. Return JSON only.",
+        "Generate one storyboard frame for the current scene. Preserve character identity and clothing. Describe only the current scene. State shot size, composition, camera angle, lighting, environment and action. Write the positive prompt in English. Return JSON only with scene_id, prompt, negative_prompt, camera and continuity_note.",
+        0.4,
+        200,
+        4
+      ]
+    },
+    {
+      "id": 9,
+      "type": "PreviewAny",
+      "pos": [1690, 940],
+      "size": [720, 520],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [{"name": "source", "type": "*", "link": 9}],
+      "outputs": [{"name": "STRING", "type": "STRING", "links": null}],
+      "properties": {"cnr_id": "comfy-core", "ver": "0.29.2", "Node name for S&R": "PreviewAny"},
+      "widgets_values": []
+    },
+    {
+      "id": 10,
+      "type": "PreviewAny",
+      "pos": [1690, 1500],
+      "size": [720, 320],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [{"name": "source", "type": "*", "link": 10}],
+      "outputs": [{"name": "STRING", "type": "STRING", "links": null}],
+      "properties": {"cnr_id": "comfy-core", "ver": "0.29.2", "Node name for S&R": "PreviewAny"},
+      "widgets_values": []
+    }
+  ],
+  "links": [
+    [1, 1, 0, 4, 0, "IMAGE"],
+    [2, 3, 0, 4, 2, "STRING"],
+    [3, 2, 0, 4, 3, "STRING"],
+    [4, 4, 0, 5, 0, "STRING"],
+    [5, 4, 0, 6, 0, "STRING"],
+    [6, 4, 0, 8, 0, "STRING"],
+    [7, 1, 0, 8, 1, "IMAGE"],
+    [8, 6, 0, 7, 0, "STRING"],
+    [9, 8, 2, 9, 0, "STRING"],
+    [10, 8, 0, 10, 0, "STRING"]
+  ],
+  "groups": [
+    {"id": 1, "title": "1. 总导演生成严格 JSON 大纲", "bounding": [20, -40, 1740, 1180], "color": "#3f789e", "flags": {}},
+    {"id": 2, "title": "2. 拆分单个场景（调试示例）", "bounding": [1090, 450, 1070, 440], "color": "#8b6f47", "flags": {}},
+    {"id": 3, "title": "3. 每个场景独立并行调用 LLM", "bounding": [1090, 890, 1350, 960], "color": "#5b7f55", "flags": {}}
+  ],
+  "config": {},
+  "extra": {"ds": {"scale": 0.7, "offset": [70, 80]}},
+  "version": 0.4
+}
