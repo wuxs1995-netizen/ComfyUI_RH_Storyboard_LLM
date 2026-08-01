@@ -1,5 +1,6 @@
 import json
 import unittest
+from pathlib import Path
 
 from node import (
     RH_OfflineStoryboardParser_Node,
@@ -76,6 +77,16 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         parser_inputs = RH_OfflineStoryboardParser_Node.INPUT_TYPES()["required"]
         self.assertEqual(request_outputs[2], parser_inputs["prompt_language"][0])
         self.assertEqual(request_outputs[3], parser_inputs["aspect_ratio"][0])
+
+    def test_bundled_qwen_workflow_enables_default_template(self):
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json"
+        )
+        workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+        text_generate = next(node for node in workflow["nodes"] if node["type"] == "TextGenerate")
+        self.assertIs(text_generate["widgets_values"][-1], True)
 
 
 if __name__ == "__main__":
