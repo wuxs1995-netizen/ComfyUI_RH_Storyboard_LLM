@@ -61,7 +61,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             parse_offline_storyboard_text('{"scenes":[{"prompt":"only one"}]}', 2)
 
     def test_request_requires_exact_count_and_json(self):
-        request, count, language, ratio, width, height = RH_OfflineStoryboardRequest_Node().build_request(
+        request, count, language, ratio, width, height, source_story = RH_OfflineStoryboardRequest_Node().build_request(
             "A girl discovers a letter.",
             4,
             "English",
@@ -72,9 +72,14 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertIn('"scene_id": 1', request)
         self.assertIn('"scene_id": 4', request)
         self.assertIn('"character_bible"', request)
+        self.assertIn('"supporting_characters"', request)
+        self.assertIn('"story_fact"', request)
+        self.assertIn("THE ONLY AUTHORITATIVE SOURCE", request)
+        self.assertIn("MUST NOT ADD OR REPLACE PLOT FACTS", request)
         self.assertIn("must never change between scenes", request)
         self.assertEqual((count, language, ratio), (4, "English", "16:9"))
         self.assertEqual((width, height), (1024, 576))
+        self.assertEqual(source_story, "A girl discovers a letter.")
 
     def test_parser_connection_types_match_request_outputs(self):
         request_outputs = RH_OfflineStoryboardRequest_Node.RETURN_TYPES
@@ -118,6 +123,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         requests, normalized, count, language, ratio = (
             RH_OfflineStoryboardSceneRequests_Node().build_scene_requests(
                 outline,
+                "A woman discovers a letter and reads it in another room.",
                 2,
                 "English",
                 "16:9",
@@ -128,7 +134,53 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertEqual((count, language, ratio), (2, "English", "16:9"))
         self.assertIn("black blunt-bang bob with a white flower", requests[0])
         self.assertIn("black blunt-bang bob with a white flower", requests[1])
+        self.assertIn("SOURCE STORY", requests[0])
         self.assertEqual(json.loads(normalized)["generation_settings"]["mode"], "offline_qwen_two_pass")
+
+    def test_parser_adds_supporting_character_only_when_present(self):
+        outline = json.dumps(
+            {
+                "source_story": "A woman waits; a courier approaches and gives her a letter.",
+                "character_bible": {
+                    "character_id": "primary",
+                    "identity": "young East Asian woman",
+                    "hairstyle": "black bob with white flower",
+                    "clothing": "beige coat",
+                },
+                "supporting_characters": [
+                    {
+                        "character_id": "courier",
+                        "role": "courier",
+                        "identity": "middle-aged man",
+                        "clothing": "dark raincoat",
+                    }
+                ],
+                "style_bible": {"visual_style": "cinematic realism"},
+                "scenes": [
+                    {
+                        "scene_id": 1,
+                        "story_fact": "The woman waits.",
+                        "characters_present": ["primary"],
+                    },
+                    {
+                        "scene_id": 2,
+                        "story_fact": "The courier gives her a letter.",
+                        "characters_present": ["primary", "courier"],
+                    },
+                ],
+            }
+        )
+        raw = [
+            json.dumps({"scene_id": 1, "prompt": "the woman waits"}),
+            json.dumps({"scene_id": 2, "prompt": "the courier hands over the letter"}),
+        ]
+        positive, _, storyboard_json, _ = RH_OfflineStoryboardParser_Node().parse_storyboard(
+            raw, [2], ["English"], ["16:9"], ["low quality"], [outline]
+        )
+        self.assertNotIn("middle-aged man", positive[0])
+        self.assertIn("middle-aged man", positive[1])
+        storyboard = json.loads(storyboard_json)
+        self.assertEqual(storyboard["shots"][1]["story_fact"], "The courier gives her a letter.")
 
     def test_parser_prepends_identical_character_anchor_to_every_scene(self):
         outline = json.dumps(
@@ -177,6 +229,13 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertTrue(
             any(node["type"] == "RH_OFFLINE_STORYBOARD_SCENE_REQUESTS" for node in workflow["nodes"])
         )
+        request_node = next(node for node in workflow["nodes"] if node["type"] == "RH_OFFLINE_STORYBOARD_REQUEST")
+        scene_request_node = next(
+            node for node in workflow["nodes"] if node["type"] == "RH_OFFLINE_STORYBOARD_SCENE_REQUESTS"
+        )
+        self.assertEqual(request_node["outputs"][6]["name"], "source_story")
+        self.assertEqual(scene_request_node["inputs"][1]["name"], "source_story")
+        self.assertIsNotNone(scene_request_node["inputs"][1]["link"])
 
     def test_bundled_workflow_has_no_rgthree_image_comparer(self):
         workflow_path = (

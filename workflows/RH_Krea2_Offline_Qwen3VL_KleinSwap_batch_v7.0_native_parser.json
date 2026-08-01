@@ -1,8 +1,8 @@
 {
   "id": "rh-krea2-offline-qwen3vl-native-parser-v70",
-  "revision": 15,
+  "revision": 16,
   "last_node_id": 105,
-  "last_link_id": 30151,
+  "last_link_id": 30152,
   "nodes": [
     {
       "id": 1,
@@ -3606,7 +3606,7 @@
     {
       "id": 99,
       "type": "RH_OFFLINE_STORYBOARD_REQUEST",
-      "title": "步骤1｜锁定统一人物设定与分镜大纲",
+      "title": "步骤1｜锁定原故事、完整角色表与分镜大纲",
       "pos": [
         500,
         4810
@@ -3693,6 +3693,13 @@
           "name": "height",
           "type": "INT",
           "links": []
+        },
+        {
+          "name": "source_story",
+          "type": "STRING",
+          "links": [
+            30152
+          ]
         }
       ],
       "properties": {
@@ -3708,7 +3715,7 @@
         8,
         "中文",
         "16:9",
-        "You are a local cinematic storyboard continuity director.\nFirst create one canonical character bible from the story and optional reference image, then create a chronological scene outline.\nThe character's identity, face, age, hairstyle, hair accessories, clothing and signature props are IMMUTABLE across every scene unless the story explicitly requires a change.\nLocation, action, emotion, shot size, camera angle, composition, lighting, time and weather are MUTABLE scene variables.\nUse the optional reference image only for character identity and appearance; never copy its background or pose.\nReturn valid JSON only. Do not use Markdown, explanations, comments or text outside the JSON object."
+        "You are a local cinematic storyboard continuity director.\nFirst create one canonical character bible from the story and optional reference image, then create a chronological scene outline.\nThe character's identity, face, age, hairstyle, hair accessories, clothing and signature props are IMMUTABLE across every scene unless the story explicitly requires a change.\nLocation, action, emotion, shot size, camera angle, composition, lighting, time and weather are MUTABLE scene variables.\nThe source story is authoritative. Preserve every named or implied character, their relationships, the central action and the outcome. Do not replace, remove or invent major story events.\nWhen a short story is expanded into many shots, subdivide the existing action into visual beats instead of adding unrelated actions or a new plot.\nUse the optional reference image only for character identity and appearance; never copy its background or pose.\nReturn valid JSON only. Do not use Markdown, explanations, comments or text outside the JSON object."
       ],
       "color": "#2d4059",
       "bgcolor": "#3f5875"
@@ -3889,7 +3896,7 @@
     {
       "id": 103,
       "type": "RH_OFFLINE_STORYBOARD_SCENE_REQUESTS",
-      "title": "步骤2｜共享人物锁定 → 逐分镜请求",
+      "title": "步骤2｜原故事锚点 + 出场角色锁定 → 逐分镜请求",
       "pos": [
         1600,
         4810
@@ -3906,6 +3913,11 @@
           "name": "outline_text",
           "type": "STRING",
           "link": 30135
+        },
+        {
+          "name": "source_story",
+          "type": "STRING",
+          "link": 30152
         },
         {
           "name": "scene_count",
@@ -3977,7 +3989,7 @@
         }
       },
       "widgets_values": [
-        "You are a cinematic Krea 2 prompt engineer.\nGenerate exactly one production-ready image prompt for the supplied scene package.\nTreat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.\nDescribe only the current scene's mutable action, emotion, environment, camera, composition and lighting.\nReturn valid JSON only. Do not use Markdown or commentary."
+        "You are a cinematic Krea 2 prompt engineer.\nGenerate exactly one production-ready image prompt for the supplied scene package.\nTreat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.\nTreat SOURCE STORY and STORY FACT as authoritative. The shot must visualize that fact without changing the people, action, relationship or outcome.\nDescribe only the current scene's mutable action, emotion, environment, camera, composition and lighting.\nReturn valid JSON only. Do not use Markdown or commentary."
       ],
       "color": "#2d4059",
       "bgcolor": "#3f5875"
@@ -4794,7 +4806,7 @@
       99,
       1,
       103,
-      1,
+      2,
       "INT"
     ],
     [
@@ -4802,7 +4814,7 @@
       99,
       2,
       103,
-      2,
+      3,
       "STRING"
     ],
     [
@@ -4810,7 +4822,7 @@
       99,
       3,
       103,
-      3,
+      4,
       "STRING"
     ],
     [
@@ -4916,6 +4928,14 @@
       105,
       0,
       "STRING"
+    ],
+    [
+      30152,
+      99,
+      6,
+      103,
+      1,
+      "STRING"
     ]
   ],
   "groups": [
@@ -4957,7 +4977,7 @@
     },
     {
       "id": 32,
-      "title": "本地 Qwen3VL 两阶段人物锁定分镜｜Plan → Locked Scenes → Parser",
+      "title": "本地 Qwen3VL 两阶段忠实分镜｜原故事 + 完整角色表 → Locked Scenes → Parser",
       "bounding": [
         40,
         4720,
@@ -4977,7 +4997,7 @@
         60
       ]
     },
-    "rh_workflow_version": "krea2image-batch-v7.3-offline-two-pass-character-lock",
+    "rh_workflow_version": "krea2image-batch-v7.4-offline-story-fidelity",
     "rh_root_link_namespace": "300xx-rebuilt",
     "ue_links": [],
     "links_added_by_ue": [],
@@ -5096,6 +5116,15 @@
         "top_k": 32,
         "top_p": 0.82
       }
+    },
+    "rh_story_fidelity": {
+      "source_story_passed_to_every_scene": true,
+      "scene_fields": [
+        "story_fact",
+        "characters_present"
+      ],
+      "character_model": "primary character_bible plus supporting_characters",
+      "rule": "subdivide short source events; never invent unrelated plot beats"
     }
   },
   "version": 0.4,

@@ -41,13 +41,13 @@ The prompt lists can be connected to text-encoding and image-generation nodes. C
 
 ### RH Storyboard - Offline Qwen Request
 
-Builds the first-pass planning request for ComfyUI's native `TextGenerate` node. The model analyzes the reference image once, creates one canonical `character_bible`, and outlines the requested scenes while separating immutable character traits from mutable scene details. This node performs no network request and has no API inputs.
+Builds the first-pass planning request for ComfyUI's native `TextGenerate` node. The model analyzes the reference image once, creates one canonical primary-character bible plus supporting-character records, and outlines the requested scenes while separating immutable character traits from mutable scene details. The exact source story is also emitted for the second pass. This node performs no network request and has no API inputs.
 
 Connect its `qwen_prompt` output to `TextGenerate.prompt`, and connect the same reference image directly to `TextGenerate.image` when using a vision-language model such as Qwen3VL.
 
 ### RH Storyboard - Offline Locked Scene Requests
 
-Parses the first-pass outline and creates one second-pass request per scene. Every request receives the exact same character and style locks plus the previous, current and next scene outline. ComfyUI maps a second native `TextGenerate` node across this list.
+Parses the first-pass outline and creates one second-pass request per scene. Every request receives the exact source story, the scene's required `story_fact`, the complete character records and the previous/current/next scene outline. Short source events may be divided into more camera beats, but the model is explicitly prohibited from replacing actors or inventing a different plot.
 
 ### RH Storyboard - Offline Qwen Parser
 
@@ -116,7 +116,7 @@ After restarting ComfyUI, hard-refresh the browser and search for `RH Storyboard
 - [`workflows/RH_configurable_director_1_to_12_scenes.json`](workflows/RH_configurable_director_1_to_12_scenes.json) adds selectable scene count, prompt language and aspect ratio, with up to twelve independently connectable scene branches.
 - [`workflows/RH_configurable_director_Krea2Image_batch.json`](workflows/RH_configurable_director_Krea2Image_batch.json) maps the generated prompt list through the bundled Krea2Image subgraph definition, exposes `📐 Resolution Master` in the main configuration area for the actual generation width and height, removes the original list-incompatible metadata saver, and saves the resulting storyboard images through an external list-safe `SaveImage` node.
 - [`workflows/RH_configurable_director_Krea2Image_ReActor_batch.json`](workflows/RH_configurable_director_Krea2Image_ReActor_batch.json) keeps the Krea2Image batch workflow and adds an enabled-by-default `ReActorFaceSwap` identity pass. The same uploaded character reference is sent to the director and broadcast as the ReActor source image for every generated storyboard frame. Separate previews show the swapped result, the original Krea image, and the Krea base image. Version 5.3 exports the workflow with ComfyUI schema version `0.4` for frontend link-rendering compatibility and uses the dedicated `30001+` namespace for root links so they cannot collide with links inside the bundled Krea subgraphs.
-- [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json) is the fully offline Qwen3VL workflow. Its v7.3 revision uses a two-pass local pipeline: Qwen first locks one canonical character bible and scene outline, then writes each shot with that shared context. The parser prepends the same immutable character anchor to every Krea prompt. Text previews expose the plan, per-scene responses, parsed storyboard JSON and final prompt list. Only the final `SaveImage` writes images, so runs do not create rgthree or ComfyUI preview-temp assets.
+- [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json) is the fully offline Qwen3VL workflow. Its v7.4 revision uses a two-pass local pipeline with source-story fidelity: Qwen first locks the primary and supporting characters and maps every shot to a `story_fact`, then writes each shot with the original story and shared context. The parser adds canonical descriptions only for characters marked present in that shot. Text previews expose the plan, per-scene responses, parsed storyboard JSON and final prompt list. Only the final `SaveImage` writes images.
 
 For a fully offline workflow, use `Offline Qwen Request → TextGenerate (plan) → Offline Locked Scene Requests → TextGenerate (shots) → Offline Qwen Parser`.
 
