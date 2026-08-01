@@ -41,13 +41,13 @@ The prompt lists can be connected to text-encoding and image-generation nodes. C
 
 ### RH Storyboard - Offline Qwen Request
 
-Builds a strict local storyboard request for ComfyUI's native `TextGenerate` node. It accepts the story, scene count, prompt language and aspect ratio, and returns a Qwen prompt plus matching settings and dimensions. This node performs no network request and has no API inputs.
+Builds a list of strict per-scene requests for ComfyUI's native `TextGenerate` node. It accepts the story, scene count, prompt language and aspect ratio, then returns one Qwen request per scene plus matching settings and dimensions. ComfyUI maps `TextGenerate` across the list, which is more reliable for 4B models than asking for 8–12 complete scenes in one response. This node performs no network request and has no API inputs.
 
 Connect its `qwen_prompt` output to `TextGenerate.prompt`, and connect the same reference image directly to `TextGenerate.image` when using a vision-language model such as Qwen3VL.
 
 ### RH Storyboard - Offline Qwen Parser
 
-Converts the local model response into ordered `positive_prompts` and `negative_prompts` lists for batch image generation. It accepts strict JSON, Markdown-fenced JSON and numbered prompt lines. JSON scenes may use `prompt`, `positive_prompt`, `image_prompt` or structured visual fields.
+Collects the per-scene local model responses into ordered `positive_prompts` and `negative_prompts` lists for batch image generation. It also accepts a single multi-scene response for compatibility. Supported formats include strict JSON, Markdown-fenced JSON and numbered prompt lines. JSON scenes may use `prompt`, `positive_prompt`, `image_prompt` or structured visual fields.
 
 The parser raises a clear error when the local model returns fewer usable prompts than requested instead of silently producing an empty storyboard. Increase `TextGenerate.max_length` or reduce the scene count if that happens.
 

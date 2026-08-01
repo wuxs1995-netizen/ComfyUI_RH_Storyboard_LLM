@@ -60,15 +60,17 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             parse_offline_storyboard_text('{"scenes":[{"prompt":"only one"}]}', 2)
 
     def test_request_requires_exact_count_and_json(self):
-        request, count, language, ratio, width, height = RH_OfflineStoryboardRequest_Node().build_request(
+        requests, count, language, ratio, width, height = RH_OfflineStoryboardRequest_Node().build_request(
             "A girl discovers a letter.",
             4,
             "English",
             "16:9",
             "Create a cinematic storyboard. Return JSON only.",
         )
-        self.assertIn("exactly 4", request)
-        self.assertIn('"scenes"', request)
+        self.assertEqual(len(requests), 4)
+        self.assertIn("scene 1 of 4", requests[0])
+        self.assertIn("scene_id=4", requests[3])
+        self.assertIn('"scenes"', requests[0])
         self.assertEqual((count, language, ratio), (4, "English", "16:9"))
         self.assertEqual((width, height), (1024, 576))
 
@@ -77,6 +79,23 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         parser_inputs = RH_OfflineStoryboardParser_Node.INPUT_TYPES()["required"]
         self.assertEqual(request_outputs[2], parser_inputs["prompt_language"][0])
         self.assertEqual(request_outputs[3], parser_inputs["aspect_ratio"][0])
+
+    def test_parser_aggregates_per_scene_qwen_responses(self):
+        raw = [
+            json.dumps({"scenes": [{"scene_id": index, "prompt": f"scene {index}"}]})
+            for index in range(1, 4)
+        ]
+        positive, negative, storyboard_json, count = RH_OfflineStoryboardParser_Node().parse_storyboard(
+            raw,
+            [3],
+            ["English"],
+            ["16:9"],
+            ["low quality"],
+        )
+        self.assertEqual(positive, ["scene 1", "scene 2", "scene 3"])
+        self.assertEqual(negative, ["low quality"] * 3)
+        self.assertEqual(count, 3)
+        self.assertEqual(len(json.loads(storyboard_json)["shots"]), 3)
 
     def test_bundled_qwen_workflow_enables_default_template(self):
         workflow_path = (
