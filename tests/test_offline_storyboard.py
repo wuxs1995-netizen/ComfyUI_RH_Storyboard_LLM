@@ -6,6 +6,7 @@ from node import (
     RH_OfflineStoryboardParser_Node,
     RH_OfflineStoryboardRequest_Node,
     RH_OfflineStoryboardSceneRequests_Node,
+    _scene_save_prefix,
     parse_offline_storyboard_text,
 )
 
@@ -74,6 +75,8 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertIn('"character_bible"', request)
         self.assertIn('"supporting_characters"', request)
         self.assertIn('"story_fact"', request)
+        self.assertIn('"current_action"', request)
+        self.assertIn('"must_not_show"', request)
         self.assertIn("THE ONLY AUTHORITATIVE SOURCE", request)
         self.assertIn("MUST NOT ADD OR REPLACE PLOT FACTS", request)
         self.assertIn("must never change between scenes", request)
@@ -99,7 +102,10 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             ["16:9"],
             ["low quality"],
         )
-        self.assertEqual(positive, ["scene 1", "scene 2", "scene 3"])
+        self.assertEqual(
+            positive,
+            ["SCENE 01/03, scene 1", "SCENE 02/03, scene 2", "SCENE 03/03, scene 3"],
+        )
         self.assertEqual(negative, ["low quality"] * 3)
         self.assertEqual(count, 3)
         self.assertEqual(len(json.loads(storyboard_json)["shots"]), 3)
@@ -135,6 +141,8 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertIn("black blunt-bang bob with a white flower", requests[0])
         self.assertIn("black blunt-bang bob with a white flower", requests[1])
         self.assertIn("SOURCE STORY", requests[0])
+        self.assertIn("CURRENT ACTION", requests[0])
+        self.assertNotIn('"next_scene"', requests[0])
         self.assertEqual(json.loads(normalized)["generation_settings"]["mode"], "offline_qwen_two_pass")
 
     def test_parser_adds_supporting_character_only_when_present(self):
@@ -215,6 +223,13 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         storyboard = json.loads(storyboard_json)
         self.assertEqual(storyboard["generation_settings"]["mode"], "offline_qwen_two_pass")
         self.assertEqual(storyboard["shots"][0]["raw_prompt"], "wide shot in a courtyard")
+        self.assertEqual(storyboard["shots"][0]["scene_label"], "SCENE 01/02")
+
+    def test_numbered_scene_save_prefix(self):
+        self.assertEqual(
+            _scene_save_prefix("RH_Krea2_Offline_Storyboard", 3),
+            "RH_Krea2_Offline_Storyboard/Scene_03",
+        )
 
     def test_bundled_qwen_workflow_enables_default_template(self):
         workflow_path = (
@@ -260,7 +275,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         )
         workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
         self.assertFalse(any(node.get("type") == "PreviewImage" for node in workflow["nodes"]))
-        self.assertTrue(any(node.get("type") == "SaveImage" for node in workflow["nodes"]))
+        self.assertTrue(any(node.get("type") == "RH_STORYBOARD_SCENE_SAVE" for node in workflow["nodes"]))
 
 
 if __name__ == "__main__":

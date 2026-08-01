@@ -47,13 +47,19 @@ Connect its `qwen_prompt` output to `TextGenerate.prompt`, and connect the same 
 
 ### RH Storyboard - Offline Locked Scene Requests
 
-Parses the first-pass outline and creates one second-pass request per scene. Every request receives the exact source story, the scene's required `story_fact`, the complete character records and the previous/current/next scene outline. Short source events may be divided into more camera beats, but the model is explicitly prohibited from replacing actors or inventing a different plot.
+Parses the first-pass outline and creates one second-pass request per scene. Every request receives the exact source story, the scene's required `story_fact`, the complete character records, a compact prior-state continuity value and only the current scene outline. Short source events may be divided into more camera beats, but the model is explicitly prohibited from replacing actors or inventing a different plot.
+
+The v7.5 request format also separates `state_before`, one `current_action`, `state_after` and `must_not_show`. The second pass no longer receives complete previous/next scene payloads, preventing a small local model from combining the whole sequence into every prompt.
 
 ### RH Storyboard - Offline Qwen Parser
 
 Collects the second-pass local model responses into ordered `positive_prompts` and `negative_prompts` lists for batch image generation. When connected to the locked outline, it programmatically prepends the identical canonical character and style anchors to every final prompt, so a small local model cannot silently omit or rewrite hairstyle, clothing, age or identity between shots. It also accepts the older single-pass format for compatibility.
 
 The parser raises a clear error when the local model returns fewer usable prompts than requested instead of silently producing an empty storyboard. Increase `TextGenerate.max_length` or reduce the scene count if that happens.
+
+### RH Storyboard - Save Numbered Scenes
+
+Saves mapped image lists with explicit scene-number paths such as `RH_Krea2_Offline_Storyboard/Scene_01_00001_.png`, making the corresponding storyboard shot visible in ComfyUI's asset list and on disk.
 
 ### RH Storyboard - Select Scene Prompt
 
@@ -116,7 +122,7 @@ After restarting ComfyUI, hard-refresh the browser and search for `RH Storyboard
 - [`workflows/RH_configurable_director_1_to_12_scenes.json`](workflows/RH_configurable_director_1_to_12_scenes.json) adds selectable scene count, prompt language and aspect ratio, with up to twelve independently connectable scene branches.
 - [`workflows/RH_configurable_director_Krea2Image_batch.json`](workflows/RH_configurable_director_Krea2Image_batch.json) maps the generated prompt list through the bundled Krea2Image subgraph definition, exposes `📐 Resolution Master` in the main configuration area for the actual generation width and height, removes the original list-incompatible metadata saver, and saves the resulting storyboard images through an external list-safe `SaveImage` node.
 - [`workflows/RH_configurable_director_Krea2Image_ReActor_batch.json`](workflows/RH_configurable_director_Krea2Image_ReActor_batch.json) keeps the Krea2Image batch workflow and adds an enabled-by-default `ReActorFaceSwap` identity pass. The same uploaded character reference is sent to the director and broadcast as the ReActor source image for every generated storyboard frame. Separate previews show the swapped result, the original Krea image, and the Krea base image. Version 5.3 exports the workflow with ComfyUI schema version `0.4` for frontend link-rendering compatibility and uses the dedicated `30001+` namespace for root links so they cannot collide with links inside the bundled Krea subgraphs.
-- [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json) is the fully offline Qwen3VL workflow. Its v7.4 revision uses a two-pass local pipeline with source-story fidelity: Qwen first locks the primary and supporting characters and maps every shot to a `story_fact`, then writes each shot with the original story and shared context. The parser adds canonical descriptions only for characters marked present in that shot. Text previews expose the plan, per-scene responses, parsed storyboard JSON and final prompt list. Only the final `SaveImage` writes images.
+- [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json) is the fully offline Qwen3VL workflow. Its v7.5 revision adds progressive one-action-per-shot planning, prevents previous/future actions from being merged into the current prompt, prefixes prompts with `SCENE 01/xx`, and saves final images under matching `Scene_01`, `Scene_02` paths. Character locks and source-story fidelity from v7.4 remain enabled.
 
 For a fully offline workflow, use `Offline Qwen Request → TextGenerate (plan) → Offline Locked Scene Requests → TextGenerate (shots) → Offline Qwen Parser`.
 
