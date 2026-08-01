@@ -47,6 +47,33 @@ ASPECT_PRESETS = {
     "21:9": (1344, 576),
 }
 
+DEFAULT_OFFLINE_DIRECTOR_INSTRUCTION = """You are a local cinematic storyboard director and Krea 2 prompt engineer.
+Turn the supplied story into a chronological storyboard with exactly the requested number of scenes.
+Keep character identity, face, age, hairstyle, clothing, props, environment, time, weather and visual style consistent.
+Each scene must contain one clear visual action and a production-ready image prompt with shot size, camera angle, composition, lighting, environment, emotion and material detail.
+Use the optional reference image only for character identity and appearance; never copy its background or pose.
+Return valid JSON only. Do not use Markdown, explanations, comments or text outside the JSON object."""
+
+OFFLINE_PROMPT_KEYS = ("prompt", "positive_prompt", "image_prompt", "visual_prompt")
+OFFLINE_SCENE_DETAIL_KEYS = (
+    "shot_type",
+    "camera",
+    "composition",
+    "location",
+    "environment",
+    "time",
+    "weather",
+    "subject",
+    "character",
+    "action",
+    "emotion",
+    "lighting",
+    "color_palette",
+    "visual_style",
+    "continuity",
+    "continuity_note",
+)
+
 
 def encode_image_b64(ref_image):
     """Encode the first ComfyUI IMAGE tensor as an in-memory JPEG."""
@@ -151,6 +178,160 @@ def _parse_outline(outline_json):
 
 def _json_text(value):
     return json.dumps(value, ensure_ascii=False, indent=2)
+
+
+def _extract_first_json_value(value):
+    """Return the first JSON object/array from raw or Markdown-wrapped model text."""
+    if isinstance(value, (dict, list)):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+
+    text = value.strip()
+    candidates = [text]
+    fenced = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.I)
+    if fenced:
+        candidates.insert(0, fenced.group(1).strip())
+
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, (dict, list)):
+            return parsed
+
+    decoder = json.JSONDecoder()
+    for index, character in enumerate(text):
+        if character not in "[{":
+            continue
+        try:
+            parsed, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, (dict, list)):
+            return parsed
+    return None
+
+
+def _offline_prompt_from_scene(scene):
+    if isinstance(scene, str):
+        return scene.strip(), "", "", ""
+    if not isinstance(scene, dict):
+        return "", "", "", ""
+
+    prompt = ""
+    for key in OFFLINE_PROMPT_KEYS:
+        value = scene.get(key)
+        if isinstance(value, str) and value.strip():
+            prompt = value.strip()
+            break
+
+    if not prompt:
+        details = []
+        for key in OFFLINE_SCENE_DETAIL_KEYS:
+            value = scene.get(key)
+            if value in (None, "", [], {}):
+                continue
+            if isinstance(value, str):
+                rendered = value.strip()
+            else:
+                rendered = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+            if rendered:
+                details.append(rendered)
+        prompt = ", ".join(details)
+
+    negative = str(scene.get("negative_prompt", "") or "").strip()
+    camera = str(scene.get("camera", "") or "").strip()
+    continuity = str(scene.get("continuity_note", scene.get("continuity", "")) or "").strip()
+    return prompt, negative, camera, continuity
+
+
+def _offline_line_prompts(text):
+    prompts = []
+    for raw_line in str(text).replace("\r\n", "\n").split("\n"):
+        line = raw_line.strip()
+        if not line or line.startswith("```") or line in {"{", "}", "[", "]"}:
+            continue
+        line = re.sub(
+            r"^\s*(?:[-*•]\s*)?(?:(?:scene|shot|分镜|镜头)\s*)?\d+\s*[:：.)、-]\s*",
+            "",
+            line,
+            flags=re.I,
+        ).strip()
+        line = re.sub(r'^\s*["\']?(?:prompt|positive_prompt)["\']?\s*[:：]\s*', "", line, flags=re.I)
+        line = line.strip().rstrip(",").strip().strip('"').strip("'")
+        if line:
+            prompts.append(line)
+    return prompts
+
+
+def parse_offline_storyboard_text(generated_text, scene_count, default_negative_prompt=""):
+    """Normalize Qwen JSON or numbered lines into ordered ComfyUI prompt lists."""
+    parsed = _extract_first_json_value(generated_text)
+    title = ""
+    character_bible = {}
+    style_bible = {}
+    scene_values = None
+
+    if isinstance(parsed, dict):
+        title = str(parsed.get("title", "") or "")
+        character_bible = parsed.get("character_bible", {})
+        style_bible = parsed.get("style_bible", {})
+        for key in ("scenes", "shots", "storyboard"):
+            candidate = parsed.get(key)
+            if isinstance(candidate, list):
+                scene_values = candidate
+                break
+    elif isinstance(parsed, list):
+        scene_values = parsed
+
+    shots = []
+    if scene_values is not None:
+        for index, scene in enumerate(scene_values, start=1):
+            prompt, negative, camera, continuity = _offline_prompt_from_scene(scene)
+            if not prompt:
+                continue
+            shots.append(
+                {
+                    "scene_id": index,
+                    "prompt": prompt,
+                    "negative_prompt": negative or default_negative_prompt,
+                    "camera": camera,
+                    "continuity_note": continuity,
+                    "source_scene": scene,
+                }
+            )
+    else:
+        for index, prompt in enumerate(_offline_line_prompts(generated_text), start=1):
+            shots.append(
+                {
+                    "scene_id": index,
+                    "prompt": prompt,
+                    "negative_prompt": default_negative_prompt,
+                    "camera": "",
+                    "continuity_note": "",
+                }
+            )
+
+    if len(shots) < scene_count:
+        raise ValueError(
+            f"Local Qwen returned {len(shots)} usable storyboard prompts; expected {scene_count}. "
+            "Increase TextGenerate max_length or lower the scene count, then run again."
+        )
+
+    shots = shots[:scene_count]
+    for index, shot in enumerate(shots, start=1):
+        shot["scene_id"] = index
+    positive = [shot["prompt"] for shot in shots]
+    negative = [shot["negative_prompt"] for shot in shots]
+    storyboard = {
+        "title": title,
+        "character_bible": character_bible if isinstance(character_bible, dict) else {},
+        "style_bible": style_bible if isinstance(style_bible, dict) else {},
+        "shots": shots,
+    }
+    return positive, negative, storyboard
 
 
 def _build_scene_request(outline, scenes, scene_index, instruction):
@@ -324,6 +505,143 @@ class RH_StoryboardPromptSelector_Node:
             len(shots),
             True,
         )
+
+
+class RH_OfflineStoryboardRequest_Node:
+    """Build a strict local-Qwen request without contacting any API."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "story": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "一个人物经历一次意外发现，并做出改变命运的选择。",
+                    },
+                ),
+                "scene_count": ("INT", {"default": 8, "min": 1, "max": 12}),
+                "prompt_language": (["中文", "English"], {"default": "中文"}),
+                "aspect_ratio": (list(ASPECT_PRESETS.keys()), {"default": "16:9"}),
+                "director_instruction": (
+                    "STRING",
+                    {"multiline": True, "default": DEFAULT_OFFLINE_DIRECTOR_INSTRUCTION},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "INT", "STRING", "STRING", "INT", "INT")
+    RETURN_NAMES = (
+        "qwen_prompt",
+        "scene_count",
+        "prompt_language",
+        "aspect_ratio",
+        "width",
+        "height",
+    )
+    FUNCTION = "build_request"
+    CATEGORY = "Runninghub/Storyboard/Offline"
+
+    def build_request(
+        self,
+        story,
+        scene_count,
+        prompt_language,
+        aspect_ratio,
+        director_instruction,
+    ):
+        language_rule = (
+            "Every prompt value must be written entirely in Simplified Chinese."
+            if prompt_language == "中文"
+            else "Every prompt value must be written entirely in English."
+        )
+        request = f"""{director_instruction.strip()}
+
+STORY:
+{story.strip()}
+
+SETTINGS:
+- Exact scene count: {scene_count}
+- Prompt language: {prompt_language}
+- Aspect ratio: {aspect_ratio}
+
+REQUIREMENTS:
+1. The scenes array must contain exactly {scene_count} items, numbered from 1 to {scene_count}.
+2. {language_rule}
+3. Every scene.prompt must be a single line with no internal newline.
+4. Every prompt must explicitly preserve the shared character identity and the aspect ratio {aspect_ratio}.
+5. Return only this JSON shape:
+{{
+  "title": "",
+  "character_bible": {{"appearance": "", "clothing": "", "identity": ""}},
+  "style_bible": {{"visual_style": "", "color_palette": "", "aspect_ratio": "{aspect_ratio}"}},
+  "scenes": [
+    {{
+      "scene_id": 1,
+      "prompt": "",
+      "negative_prompt": "blurry face, deformed anatomy, extra fingers, low quality",
+      "camera": "",
+      "continuity_note": ""
+    }}
+  ]
+}}"""
+        width, height = ASPECT_PRESETS[aspect_ratio]
+        return request, scene_count, prompt_language, aspect_ratio, width, height
+
+
+class RH_OfflineStoryboardParser_Node:
+    """Convert local Qwen JSON/numbered text into ComfyUI prompt lists."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "generated_text": ("STRING", {"forceInput": True}),
+                "scene_count": ("INT", {"default": 8, "min": 1, "max": 12, "forceInput": True}),
+                "prompt_language": (["中文", "English"], {"default": "中文", "forceInput": True}),
+                "aspect_ratio": (list(ASPECT_PRESETS.keys()), {"default": "16:9", "forceInput": True}),
+                "default_negative_prompt": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "blurry face, deformed anatomy, extra fingers, low quality, watermark, text",
+                    },
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "INT")
+    RETURN_NAMES = ("positive_prompts", "negative_prompts", "storyboard_json", "scene_count")
+    OUTPUT_IS_LIST = (True, True, False, False)
+    FUNCTION = "parse_storyboard"
+    CATEGORY = "Runninghub/Storyboard/Offline"
+
+    def parse_storyboard(
+        self,
+        generated_text,
+        scene_count,
+        prompt_language,
+        aspect_ratio,
+        default_negative_prompt,
+    ):
+        positive, negative, storyboard = parse_offline_storyboard_text(
+            generated_text,
+            scene_count,
+            default_negative_prompt.strip(),
+        )
+        style_bible = storyboard.get("style_bible")
+        if not isinstance(style_bible, dict):
+            style_bible = {}
+            storyboard["style_bible"] = style_bible
+        style_bible["aspect_ratio"] = aspect_ratio
+        storyboard["generation_settings"] = {
+            "mode": "offline_qwen",
+            "scene_count": scene_count,
+            "prompt_language": prompt_language,
+            "aspect_ratio": aspect_ratio,
+        }
+        return positive, negative, _json_text(storyboard), scene_count
 
 
 class RH_MultiSceneLLM_Node:
