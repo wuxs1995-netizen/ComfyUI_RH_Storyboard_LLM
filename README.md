@@ -99,11 +99,21 @@ After restarting ComfyUI, hard-refresh the browser and search for `RH Storyboard
 - [`workflows/RH_parallel_storyboard_demo.json`](workflows/RH_parallel_storyboard_demo.json) demonstrates the parallel prompt pipeline with eight separate scene previews.
 - [`workflows/RH_configurable_director_1_to_12_scenes.json`](workflows/RH_configurable_director_1_to_12_scenes.json) adds selectable scene count, prompt language and aspect ratio, with up to twelve independently connectable scene branches.
 - [`workflows/RH_configurable_director_Krea2Image_batch.json`](workflows/RH_configurable_director_Krea2Image_batch.json) maps the generated prompt list through the bundled Krea2Image subgraph definition, exposes `📐 Resolution Master` in the main configuration area for the actual generation width and height, removes the original list-incompatible metadata saver, and saves the resulting storyboard images through an external list-safe `SaveImage` node.
-- [`workflows/RH_configurable_director_Krea2Image_ReActor_batch.json`](workflows/RH_configurable_director_Krea2Image_ReActor_batch.json) keeps the Krea2Image batch workflow and adds an enabled-by-default `ReActorFaceSwap` identity pass. The same uploaded character reference is sent to the director and broadcast as the ReActor source image for every generated storyboard frame. Separate previews show the swapped result, the original Krea image, and the Krea base image.
+- [`workflows/RH_configurable_director_Krea2Image_ReActor_batch.json`](workflows/RH_configurable_director_Krea2Image_ReActor_batch.json) keeps the Krea2Image batch workflow and adds an enabled-by-default `ReActorFaceSwap` identity pass. The same uploaded character reference is sent to the director and broadcast as the ReActor source image for every generated storyboard frame. Separate previews show the swapped result, the original Krea image, and the Krea base image. Version 5.1 uses a dedicated high-numbered namespace for root links so they cannot collide with links inside the bundled Krea subgraphs.
 
 Add a new API key locally after importing any workflow; exported workflow files intentionally contain no API key. The Krea2Image workflow also requires the models and custom nodes used by the original Krea2Image blueprint to be installed on the ComfyUI instance.
 
 The ReActor workflow additionally requires [`ComfyUI-ReActor`](https://github.com/Gourieff/ComfyUI-ReActor) and `inswapper_128.onnx`. The default InsightFace/inswapper weights commonly carry non-commercial research restrictions; verify the model license before commercial use.
+
+## Troubleshooting hidden links
+
+If every node socket is connected but no wires are visible, the workflow JSON may still be valid. ComfyUI has a global `Comfy.LinkRenderMode` setting that can hide links across every workflow.
+
+- Click the link-visibility button in the canvas toolbar; when links are hidden, its action is **Show Links**.
+- Or open Settings and change **Link Render Mode** from **Hidden** to **Spline**, **Linear**, or **Straight**.
+- Hard-refresh the browser after changing the setting.
+
+This is a browser/user display setting, not a per-workflow connection setting.
 
 ## Security
 

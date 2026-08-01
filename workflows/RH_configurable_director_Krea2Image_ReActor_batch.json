@@ -1,8 +1,8 @@
 {
   "id": "rh-configurable-director-krea2-reactor",
-  "revision": 0,
+  "revision": 1,
   "last_node_id": 40,
-  "last_link_id": 40,
+  "last_link_id": 20038,
   "nodes": [
     {
       "id": 1,
@@ -25,8 +25,8 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            1,
-            39
+            20001,
+            20037
           ]
         },
         {
@@ -65,7 +65,7 @@
           "name": "ref_image",
           "shape": 7,
           "type": "IMAGE",
-          "link": 1
+          "link": 20001
         }
       ],
       "outputs": [
@@ -73,33 +73,33 @@
           "name": "outline_json",
           "type": "STRING",
           "links": [
-            2
+            20002
           ]
         },
         {
           "name": "storyboard_json",
           "type": "STRING",
           "links": [
-            3,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19
+            20003,
+            20006,
+            20007,
+            20008,
+            20009,
+            20010,
+            20011,
+            20012,
+            20013,
+            20014,
+            20015,
+            20016,
+            20017
           ]
         },
         {
           "name": "positive_prompts",
           "type": "STRING",
           "links": [
-            32
+            20030
           ],
           "shape": 6
         },
@@ -172,7 +172,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 2
+          "link": 20002
         }
       ],
       "outputs": [
@@ -208,7 +208,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 3
+          "link": 20003
         }
       ],
       "outputs": [
@@ -244,7 +244,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 4
+          "link": 20004
         }
       ],
       "outputs": [
@@ -280,7 +280,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 5
+          "link": 20005
         }
       ],
       "outputs": [
@@ -316,7 +316,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 8
+          "link": 20006
         }
       ],
       "outputs": [
@@ -324,7 +324,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20
+            20018
           ]
         },
         {
@@ -384,7 +384,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20
+          "link": 20018
         }
       ],
       "outputs": [
@@ -420,7 +420,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 9
+          "link": 20007
         }
       ],
       "outputs": [
@@ -428,7 +428,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            21
+            20019
           ]
         },
         {
@@ -488,7 +488,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 21
+          "link": 20019
         }
       ],
       "outputs": [
@@ -524,7 +524,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 10
+          "link": 20008
         }
       ],
       "outputs": [
@@ -532,7 +532,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            22
+            20020
           ]
         },
         {
@@ -592,7 +592,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 22
+          "link": 20020
         }
       ],
       "outputs": [
@@ -628,7 +628,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 11
+          "link": 20009
         }
       ],
       "outputs": [
@@ -636,7 +636,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            23
+            20021
           ]
         },
         {
@@ -696,7 +696,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 23
+          "link": 20021
         }
       ],
       "outputs": [
@@ -732,7 +732,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 12
+          "link": 20010
         }
       ],
       "outputs": [
@@ -740,7 +740,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            24
+            20022
           ]
         },
         {
@@ -800,7 +800,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 24
+          "link": 20022
         }
       ],
       "outputs": [
@@ -836,7 +836,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 13
+          "link": 20011
         }
       ],
       "outputs": [
@@ -844,7 +844,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            25
+            20023
           ]
         },
         {
@@ -904,7 +904,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 25
+          "link": 20023
         }
       ],
       "outputs": [
@@ -940,7 +940,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 14
+          "link": 20012
         }
       ],
       "outputs": [
@@ -948,7 +948,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            26
+            20024
           ]
         },
         {
@@ -1008,7 +1008,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 26
+          "link": 20024
         }
       ],
       "outputs": [
@@ -1044,7 +1044,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 15
+          "link": 20013
         }
       ],
       "outputs": [
@@ -1052,7 +1052,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            27
+            20025
           ]
         },
         {
@@ -1112,7 +1112,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 27
+          "link": 20025
         }
       ],
       "outputs": [
@@ -1148,7 +1148,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 16
+          "link": 20014
         }
       ],
       "outputs": [
@@ -1156,7 +1156,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            28
+            20026
           ]
         },
         {
@@ -1216,7 +1216,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 28
+          "link": 20026
         }
       ],
       "outputs": [
@@ -1252,7 +1252,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 17
+          "link": 20015
         }
       ],
       "outputs": [
@@ -1260,7 +1260,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            29
+            20027
           ]
         },
         {
@@ -1320,7 +1320,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 29
+          "link": 20027
         }
       ],
       "outputs": [
@@ -1356,7 +1356,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 18
+          "link": 20016
         }
       ],
       "outputs": [
@@ -1364,7 +1364,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            30
+            20028
           ]
         },
         {
@@ -1424,7 +1424,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 30
+          "link": 20028
         }
       ],
       "outputs": [
@@ -1460,7 +1460,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 19
+          "link": 20017
         }
       ],
       "outputs": [
@@ -1468,7 +1468,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            31
+            20029
           ]
         },
         {
@@ -1528,7 +1528,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 31
+          "link": 20029
         }
       ],
       "outputs": [
@@ -1570,7 +1570,7 @@
           "localized_name": "string2",
           "name": "string2",
           "type": "STRING",
-          "link": 32
+          "link": 20030
         },
         {
           "name": "seed",
@@ -1624,13 +1624,13 @@
           "localized_name": "width",
           "name": "width",
           "type": "INT",
-          "link": 33
+          "link": 20031
         },
         {
           "localized_name": "height",
           "name": "height",
           "type": "INT",
-          "link": 34
+          "link": 20032
         }
       ],
       "outputs": [
@@ -1638,14 +1638,14 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            38
+            20036
           ]
         },
         {
           "name": "IMAGE_1",
           "type": "IMAGE",
           "links": [
-            36
+            20034
           ]
         }
       ],
@@ -1674,7 +1674,7 @@
         "Krea2_2026-07-18-083247_1003949590422403.png",
         "image"
       ],
-      "title": "Krea2Image｜批量生图 v5（ReActor 身份适配）"
+      "title": "Krea2Image｜批量生图 v5.1（ReActor 身份适配）"
     },
     {
       "id": 35,
@@ -1695,7 +1695,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 35
+          "link": 20033
         }
       ],
       "outputs": [],
@@ -1725,7 +1725,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 36
+          "link": 20034
         }
       ],
       "outputs": [],
@@ -1757,7 +1757,7 @@
           "localized_name": "图片",
           "name": "images",
           "type": "IMAGE",
-          "link": 37
+          "link": 20035
         },
         {
           "localized_name": "文件名前缀",
@@ -1823,8 +1823,8 @@
           "name": "width",
           "type": "INT",
           "links": [
-            4,
-            33
+            20004,
+            20031
           ]
         },
         {
@@ -1832,8 +1832,8 @@
           "name": "height",
           "type": "INT",
           "links": [
-            5,
-            34
+            20005,
+            20032
           ]
         },
         {
@@ -1949,7 +1949,7 @@
         {
           "name": "input_image",
           "type": "IMAGE",
-          "link": 38
+          "link": 20036
         },
         {
           "name": "swap_model",
@@ -2034,7 +2034,7 @@
         {
           "name": "source_image",
           "type": "IMAGE",
-          "link": 39
+          "link": 20037
         },
         {
           "name": "face_model",
@@ -2052,8 +2052,8 @@
           "name": "SWAPPED_IMAGE",
           "type": "IMAGE",
           "links": [
-            35,
-            37
+            20033,
+            20035
           ]
         },
         {
@@ -2065,7 +2065,7 @@
           "name": "ORIGINAL_IMAGE",
           "type": "IMAGE",
           "links": [
-            40
+            20038
           ]
         }
       ],
@@ -2080,7 +2080,7 @@
         "inswapper_128.onnx",
         "retinaface_resnet50",
         "none",
-        1.0,
+        1,
         0.5,
         "no",
         "no",
@@ -2110,7 +2110,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 40
+          "link": 20038
         }
       ],
       "outputs": [],
@@ -2124,7 +2124,7 @@
   ],
   "links": [
     [
-      1,
+      20001,
       1,
       0,
       2,
@@ -2132,7 +2132,7 @@
       "IMAGE"
     ],
     [
-      2,
+      20002,
       2,
       0,
       3,
@@ -2140,7 +2140,7 @@
       "STRING"
     ],
     [
-      3,
+      20003,
       2,
       1,
       4,
@@ -2148,7 +2148,7 @@
       "STRING"
     ],
     [
-      4,
+      20004,
       38,
       0,
       5,
@@ -2156,7 +2156,7 @@
       "INT"
     ],
     [
-      5,
+      20005,
       38,
       1,
       6,
@@ -2164,7 +2164,7 @@
       "INT"
     ],
     [
-      8,
+      20006,
       2,
       1,
       10,
@@ -2172,7 +2172,7 @@
       "STRING"
     ],
     [
-      9,
+      20007,
       2,
       1,
       11,
@@ -2180,7 +2180,7 @@
       "STRING"
     ],
     [
-      10,
+      20008,
       2,
       1,
       12,
@@ -2188,7 +2188,7 @@
       "STRING"
     ],
     [
-      11,
+      20009,
       2,
       1,
       13,
@@ -2196,7 +2196,7 @@
       "STRING"
     ],
     [
-      12,
+      20010,
       2,
       1,
       14,
@@ -2204,7 +2204,7 @@
       "STRING"
     ],
     [
-      13,
+      20011,
       2,
       1,
       15,
@@ -2212,7 +2212,7 @@
       "STRING"
     ],
     [
-      14,
+      20012,
       2,
       1,
       16,
@@ -2220,7 +2220,7 @@
       "STRING"
     ],
     [
-      15,
+      20013,
       2,
       1,
       17,
@@ -2228,7 +2228,7 @@
       "STRING"
     ],
     [
-      16,
+      20014,
       2,
       1,
       18,
@@ -2236,7 +2236,7 @@
       "STRING"
     ],
     [
-      17,
+      20015,
       2,
       1,
       19,
@@ -2244,7 +2244,7 @@
       "STRING"
     ],
     [
-      18,
+      20016,
       2,
       1,
       20,
@@ -2252,7 +2252,7 @@
       "STRING"
     ],
     [
-      19,
+      20017,
       2,
       1,
       21,
@@ -2260,7 +2260,7 @@
       "STRING"
     ],
     [
-      20,
+      20018,
       10,
       0,
       22,
@@ -2268,7 +2268,7 @@
       "STRING"
     ],
     [
-      21,
+      20019,
       11,
       0,
       23,
@@ -2276,7 +2276,7 @@
       "STRING"
     ],
     [
-      22,
+      20020,
       12,
       0,
       24,
@@ -2284,7 +2284,7 @@
       "STRING"
     ],
     [
-      23,
+      20021,
       13,
       0,
       25,
@@ -2292,7 +2292,7 @@
       "STRING"
     ],
     [
-      24,
+      20022,
       14,
       0,
       26,
@@ -2300,7 +2300,7 @@
       "STRING"
     ],
     [
-      25,
+      20023,
       15,
       0,
       27,
@@ -2308,7 +2308,7 @@
       "STRING"
     ],
     [
-      26,
+      20024,
       16,
       0,
       28,
@@ -2316,7 +2316,7 @@
       "STRING"
     ],
     [
-      27,
+      20025,
       17,
       0,
       29,
@@ -2324,7 +2324,7 @@
       "STRING"
     ],
     [
-      28,
+      20026,
       18,
       0,
       30,
@@ -2332,7 +2332,7 @@
       "STRING"
     ],
     [
-      29,
+      20027,
       19,
       0,
       31,
@@ -2340,7 +2340,7 @@
       "STRING"
     ],
     [
-      30,
+      20028,
       20,
       0,
       32,
@@ -2348,7 +2348,7 @@
       "STRING"
     ],
     [
-      31,
+      20029,
       21,
       0,
       33,
@@ -2356,7 +2356,7 @@
       "STRING"
     ],
     [
-      32,
+      20030,
       2,
       2,
       34,
@@ -2364,7 +2364,7 @@
       "STRING"
     ],
     [
-      33,
+      20031,
       38,
       0,
       34,
@@ -2372,7 +2372,7 @@
       "INT"
     ],
     [
-      34,
+      20032,
       38,
       1,
       34,
@@ -2380,7 +2380,7 @@
       "INT"
     ],
     [
-      35,
+      20033,
       39,
       0,
       35,
@@ -2388,7 +2388,7 @@
       "IMAGE"
     ],
     [
-      36,
+      20034,
       34,
       1,
       36,
@@ -2396,7 +2396,7 @@
       "IMAGE"
     ],
     [
-      37,
+      20035,
       39,
       0,
       37,
@@ -2404,7 +2404,7 @@
       "IMAGE"
     ],
     [
-      38,
+      20036,
       34,
       0,
       39,
@@ -2412,7 +2412,7 @@
       "IMAGE"
     ],
     [
-      39,
+      20037,
       1,
       0,
       39,
@@ -2420,7 +2420,7 @@
       "IMAGE"
     ],
     [
-      40,
+      20038,
       39,
       2,
       40,
@@ -2587,7 +2587,7 @@
     },
     {
       "id": 30,
-      "title": "Krea2Image 批量生图 v5：ReActor 人物身份一致性",
+      "title": "Krea2Image 批量生图 v5.1：ReActor 身份一致性｜唯一连线编号",
       "bounding": [
         1060,
         2000,
@@ -2607,7 +2607,11 @@
         100
       ]
     },
-    "rh_workflow_version": "krea2image-batch-v5-reactor-identity"
+    "rh_workflow_version": "krea2image-batch-v5.1-reactor-unique-links",
+    "rh_root_link_namespace": "200xx-global-unique",
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "anomalous_hashes": {}
   },
   "version": 0.5,
   "definitions": {
