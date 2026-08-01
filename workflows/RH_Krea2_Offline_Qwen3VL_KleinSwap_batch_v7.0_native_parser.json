@@ -3465,7 +3465,7 @@
         0,
         0,
         false,
-        false
+        true
       ],
       "title": "本地 Qwen3VL 文本生成｜返回严格分镜 JSON"
     },
