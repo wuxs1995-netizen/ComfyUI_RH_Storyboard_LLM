@@ -1,6 +1,6 @@
 {
   "id": "rh-krea2-offline-qwen3vl-native-parser-v70",
-  "revision": 16,
+  "revision": 17,
   "last_node_id": 105,
   "last_link_id": 30152,
   "nodes": [
@@ -3014,14 +3014,14 @@
     },
     {
       "id": 80,
-      "type": "SaveImage",
+      "type": "RH_STORYBOARD_SCENE_SAVE",
       "pos": [
         4690,
         3640
       ],
       "size": [
-        450,
-        600
+        390,
+        180
       ],
       "flags": {
         "pinned": true
@@ -3033,35 +3033,33 @@
           "name": "images",
           "type": "IMAGE",
           "link": 30129
-        }
-      ],
-      "outputs": [
+        },
         {
-          "name": "images",
-          "type": "IMAGE",
-          "links": []
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": null
+        },
+        {
+          "name": "start_scene",
+          "type": "INT",
+          "widget": {
+            "name": "start_scene"
+          },
+          "link": null
         }
       ],
-      "title": "最终图片保存｜原生离线 Qwen 版｜写入左侧资产列表",
+      "outputs": [],
+      "title": "最终图片保存｜按 Scene_01、Scene_02…编号",
       "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.8.2",
-        "Node name for S&R": "SaveImage",
-        "enableTabs": false,
-        "tabWidth": 65,
-        "tabXOffset": 10,
-        "hasSecondTab": false,
-        "secondTabText": "Send Back",
-        "secondTabOffset": 80,
-        "secondTabWidth": 65,
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.8",
-          "input_ue_unconnectable": {}
-        }
+        "Node name for S&R": "RH_STORYBOARD_SCENE_SAVE",
+        "rh_scene_numbering": "Scene_01, Scene_02, ..."
       },
       "widgets_values": [
-        "RH_Krea2_Offline_Qwen3VL_Native_Storyboard"
+        "RH_Krea2_Offline_Storyboard",
+        1
       ],
       "color": "#2a363b",
       "bgcolor": "#3f5159"
@@ -3390,7 +3388,7 @@
     {
       "id": 95,
       "type": "PreviewAny",
-      "title": "最终正向提示词列表｜每条均含完全相同人物锚点",
+      "title": "最终提示词｜SCENE 01/xx + 当前动作 + 人物锚点",
       "pos": [
         3130,
         4810
@@ -3606,7 +3604,7 @@
     {
       "id": 99,
       "type": "RH_OFFLINE_STORYBOARD_REQUEST",
-      "title": "步骤1｜锁定原故事、完整角色表与分镜大纲",
+      "title": "步骤1｜渐进式分镜规划：每镜头一个动作",
       "pos": [
         500,
         4810
@@ -3723,7 +3721,7 @@
     {
       "id": 100,
       "type": "RH_OFFLINE_STORYBOARD_PARSER",
-      "title": "步骤3｜注入统一人物锚点 → 批量提示词",
+      "title": "步骤3｜人物锚点 + 分镜编号 → 批量提示词",
       "pos": [
         2620,
         4810
@@ -3896,7 +3894,7 @@
     {
       "id": 103,
       "type": "RH_OFFLINE_STORYBOARD_SCENE_REQUESTS",
-      "title": "步骤2｜原故事锚点 + 出场角色锁定 → 逐分镜请求",
+      "title": "步骤2｜仅生成当前动作，不混入前后镜头",
       "pos": [
         1600,
         4810
@@ -3989,7 +3987,7 @@
         }
       },
       "widgets_values": [
-        "You are a cinematic Krea 2 prompt engineer.\nGenerate exactly one production-ready image prompt for the supplied scene package.\nTreat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.\nTreat SOURCE STORY and STORY FACT as authoritative. The shot must visualize that fact without changing the people, action, relationship or outcome.\nDescribe only the current scene's mutable action, emotion, environment, camera, composition and lighting.\nReturn valid JSON only. Do not use Markdown or commentary."
+        "You are a cinematic Krea 2 prompt engineer.\nGenerate exactly one production-ready image prompt for the supplied scene package.\nTreat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.\nTreat SOURCE STORY and STORY FACT as authoritative. The shot must visualize that fact without changing the people, action, relationship or outcome.\nGenerate one still frame, not a montage or an action sequence. Depict exactly CURRENT ACTION and its resulting visible state.\nDo not combine previous actions, future actions, transitions or the entire story into this prompt.\nDescribe only the current scene's mutable action, emotion, environment, camera, composition and lighting.\nReturn valid JSON only. Do not use Markdown or commentary."
       ],
       "color": "#2d4059",
       "bgcolor": "#3f5875"
@@ -4997,7 +4995,7 @@
         60
       ]
     },
-    "rh_workflow_version": "krea2image-batch-v7.4-offline-story-fidelity",
+    "rh_workflow_version": "krea2image-batch-v7.5-progressive-numbered-scenes",
     "rh_root_link_namespace": "300xx-rebuilt",
     "ue_links": [],
     "links_added_by_ue": [],
@@ -5125,6 +5123,22 @@
       ],
       "character_model": "primary character_bible plus supporting_characters",
       "rule": "subdivide short source events; never invent unrelated plot beats"
+    },
+    "rh_progressive_storyboard": {
+      "one_action_per_scene": true,
+      "scene_fields": [
+        "beat_role",
+        "state_before",
+        "current_action",
+        "state_after",
+        "must_not_show"
+      ],
+      "second_pass_context": "current scene only; previous state summary; no next-scene payload"
+    },
+    "rh_numbered_outputs": {
+      "node": "RH_STORYBOARD_SCENE_SAVE",
+      "folder": "RH_Krea2_Offline_Storyboard",
+      "filenames": "Scene_01_*.png, Scene_02_*.png, ..."
     }
   },
   "version": 0.4,

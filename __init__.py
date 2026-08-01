@@ -7,6 +7,7 @@ from .node import (
     RH_OfflineStoryboardSceneRequests_Node,
     RH_SceneJSONSplitter_Node,
     RH_StoryboardPromptSelector_Node,
+    RH_StoryboardSceneSave_Node,
 )
 
 
@@ -19,6 +20,7 @@ NODE_CLASS_MAPPINGS = {
     "RH_OFFLINE_STORYBOARD_SCENE_REQUESTS": RH_OfflineStoryboardSceneRequests_Node,
     "RH_OFFLINE_STORYBOARD_PARSER": RH_OfflineStoryboardParser_Node,
     "RH_STORYBOARD_PROMPT_SELECTOR": RH_StoryboardPromptSelector_Node,
+    "RH_STORYBOARD_SCENE_SAVE": RH_StoryboardSceneSave_Node,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -30,6 +32,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RH_OFFLINE_STORYBOARD_SCENE_REQUESTS": "RH Storyboard - Offline Locked Scene Requests",
     "RH_OFFLINE_STORYBOARD_PARSER": "RH Storyboard - Offline Qwen Parser",
     "RH_STORYBOARD_PROMPT_SELECTOR": "RH Storyboard - Select Scene Prompt",
+    "RH_STORYBOARD_SCENE_SAVE": "RH Storyboard - Save Numbered Scenes",
 }
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]

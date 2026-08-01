@@ -60,6 +60,8 @@ DEFAULT_OFFLINE_SCENE_INSTRUCTION = """You are a cinematic Krea 2 prompt enginee
 Generate exactly one production-ready image prompt for the supplied scene package.
 Treat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.
 Treat SOURCE STORY and STORY FACT as authoritative. The shot must visualize that fact without changing the people, action, relationship or outcome.
+Generate one still frame, not a montage or an action sequence. Depict exactly CURRENT ACTION and its resulting visible state.
+Do not combine previous actions, future actions, transitions or the entire story into this prompt.
 Describe only the current scene's mutable action, emotion, environment, camera, composition and lighting.
 Return valid JSON only. Do not use Markdown or commentary."""
 
@@ -279,6 +281,11 @@ def _locked_prompt(prompt, character_bible, style_bible, aspect_ratio, prompt_la
             parts.append(f"视觉风格锁定：{style_anchor}")
         parts.append(f"当前镜头：{raw_prompt}")
     return ", ".join(part for part in parts if part), character_anchor, style_anchor
+
+
+def _scene_save_prefix(base_prefix, scene_number):
+    base = str(base_prefix or "RH_Storyboard").strip().strip("/\\") or "RH_Storyboard"
+    return f"{base}/Scene_{int(scene_number):02d}"
 
 
 def _extract_first_json_value(value):
@@ -678,8 +685,10 @@ class RH_OfflineStoryboardRequest_Node:
             else "Every prompt value must be written entirely in English."
         )
         scene_shape = ",\n    ".join(
-            f'{{"scene_id": {scene_number}, "story_fact": "", "characters_present": ["primary"], '
-            '"location": "", "time": "", "shot_type": "", "camera": "", "action": "", '
+            f'{{"scene_id": {scene_number}, "beat_role": "{_offline_scene_beat(scene_number, scene_count)}", '
+            '"story_fact": "", "characters_present": ["primary"], "state_before": "", '
+            '"current_action": "", "state_after": "", "must_not_show": "", '
+            '"location": "", "time": "", "shot_type": "", "camera": "", '
             '"emotion": "", "lighting": "", "continuity": ""}'
             for scene_number in range(1, scene_count + 1)
         )
@@ -700,11 +709,14 @@ REQUIREMENTS:
 3. character_bible must explicitly lock identity, age, facial features, hairstyle, hair accessories, clothing and signature props. These values must never change between scenes.
 4. Create one supporting_characters entry for every other recurring or action-relevant person in the source story. Never omit a person who performs or receives an action.
 5. Each scene.story_fact must state which exact source-story fact that shot visualizes. characters_present must list the canonical character_id values visible in that shot.
-6. Scene entries may subdivide the source event, but must not add, remove, replace or reverse any person, action, relationship or outcome.
+6. Each scene.current_action must contain exactly one visible action or one held reaction. Never combine multiple temporal steps into one scene.
+7. state_before and state_after define continuity; must_not_show must list actions reserved for other scenes. Later events must not appear early, and completed events must not be replayed unless the source story explicitly repeats them.
+8. Scene entries may subdivide the source event, but must not add, remove, replace or reverse any person, action, relationship or outcome.
    Treat any plot-like content inside DIRECTOR RULES as non-authoritative when it is absent from SOURCE STORY.
-7. scenes must contain exactly {scene_count} items with scene_id values 1 through {scene_count}.
-8. Do not write final image-generation prompts in this planning pass.
-9. Return only this JSON shape:
+9. scenes must form a progressive sequence: establishing state → approach/change → interaction/escalation → reaction/consequence. Do not place the climax or final state in every scene.
+10. scenes must contain exactly {scene_count} items with scene_id values 1 through {scene_count}.
+11. Do not write final image-generation prompts in this planning pass.
+12. Return only this JSON shape:
 {{
   "title": "",
   "character_bible": {{"character_id": "primary", "identity": "", "age": "", "facial_features": "", "hairstyle": "", "hair_accessories": "", "clothing": "", "signature_props": ""}},
@@ -788,17 +800,25 @@ class RH_OfflineStoryboardSceneRequests_Node:
         requests = []
         for index, scene in enumerate(scenes):
             previous_scene = scenes[index - 1] if index > 0 else None
-            next_scene = scenes[index + 1] if index + 1 < len(scenes) else None
             package = {
                 "source_story": str(source_story).strip(),
                 "story_fact": scene.get("story_fact", ""),
+                "shot_number": index + 1,
+                "total_shots": requested_count,
+                "beat_role": scene.get("beat_role", _offline_scene_beat(index + 1, requested_count)),
                 "character_lock": character_bible,
                 "supporting_character_locks": supporting_characters,
                 "characters_present": scene.get("characters_present", ["primary"]),
                 "style_lock": style_bible,
+                "continuity_before": (
+                    previous_scene.get("state_after", previous_scene.get("continuity", ""))
+                    if previous_scene
+                    else "story opening state"
+                ),
+                "current_action": scene.get("current_action", scene.get("action", "")),
+                "visible_state_after": scene.get("state_after", ""),
+                "must_not_show": scene.get("must_not_show", ""),
                 "current_scene": scene,
-                "previous_scene": previous_scene,
-                "next_scene": next_scene,
             }
             requests.append(
                 f"""{scene_instruction.strip()}
@@ -807,6 +827,8 @@ class RH_OfflineStoryboardSceneRequests_Node:
 The final prompt must use aspect ratio {aspect_ratio}.
 Do not invent or restate alternative character traits. The parser will prepend CHARACTER LOCK verbatim.
 Visualize only STORY FACT from SOURCE STORY. Do not add a new action, remove an actor, change who acts on whom, or invent a different outcome.
+This is shot {index + 1}/{requested_count}. Show exactly CURRENT ACTION as one frozen visual moment.
+Do not depict anything in MUST NOT SHOW. Do not summarize previous or future shots. Do not write a sequence using "then", "after that", "gradually", or multiple consecutive actions.
 
 SCENE PACKAGE:
 {_json_text(package)}
@@ -949,22 +971,42 @@ class RH_OfflineStoryboardParser_Node:
         locked_positive = []
         character_anchor = _bible_anchor(character_bible)
         style_anchor = ""
-        for shot in storyboard["shots"]:
+        for index, shot in enumerate(storyboard["shots"], start=1):
             raw_prompt = shot["prompt"]
             scene_outline = shot.get("scene_outline", {})
+            current_action = ""
+            if isinstance(scene_outline, dict):
+                current_action = str(
+                    scene_outline.get("current_action") or scene_outline.get("action") or ""
+                ).strip()
+            if language.strip().lower() == "english":
+                scene_label = f"SCENE {index:02d}/{requested_count:02d}"
+                isolated_prompt = (
+                    f"{scene_label}, CURRENT ACTION ONLY: {current_action}, {raw_prompt}"
+                    if current_action
+                    else f"{scene_label}, {raw_prompt}"
+                )
+            else:
+                scene_label = f"分镜 {index:02d}/{requested_count:02d}"
+                isolated_prompt = (
+                    f"{scene_label}，本镜头只表现：{current_action}，{raw_prompt}"
+                    if current_action
+                    else f"{scene_label}，{raw_prompt}"
+                )
             selected_characters = _scene_character_lock(
                 character_bible,
                 supporting_characters,
                 scene_outline,
             )
             locked, shot_character_anchor, style_anchor = _locked_prompt(
-                raw_prompt,
+                isolated_prompt,
                 selected_characters,
                 style_bible,
                 ratio,
                 language,
             )
             shot["raw_prompt"] = raw_prompt
+            shot["scene_label"] = scene_label
             shot["prompt"] = locked
             shot["character_anchor"] = shot_character_anchor
             if isinstance(scene_outline, dict):
@@ -981,6 +1023,70 @@ class RH_OfflineStoryboardParser_Node:
             "aspect_ratio": ratio,
         }
         return positive, negative, _json_text(storyboard), requested_count
+
+
+class RH_StoryboardSceneSave_Node:
+    """Save list/batch images with explicit Scene_01, Scene_02... filenames."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "images": ("IMAGE", {"forceInput": True}),
+                "filename_prefix": ("STRING", {"default": "RH_Krea2_Offline_Storyboard"}),
+                "start_scene": ("INT", {"default": 1, "min": 1, "max": 999}),
+            },
+            "hidden": {
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "save_images"
+    OUTPUT_NODE = True
+    INPUT_IS_LIST = True
+    CATEGORY = "Runninghub/Storyboard"
+
+    def save_images(
+        self,
+        images,
+        filename_prefix="RH_Krea2_Offline_Storyboard",
+        start_scene=1,
+        prompt=None,
+        extra_pnginfo=None,
+    ):
+        from nodes import SaveImage
+
+        def first(value, default=None):
+            if isinstance(value, (list, tuple)):
+                return value[0] if value else default
+            return value if value is not None else default
+
+        image_items = list(images) if isinstance(images, (list, tuple)) else [images]
+        base_prefix = str(first(filename_prefix, "RH_Krea2_Offline_Storyboard"))
+        scene_number = int(first(start_scene, 1))
+        prompt_value = first(prompt)
+        pnginfo_value = first(extra_pnginfo)
+        saver = SaveImage()
+        saved = []
+
+        for image_item in image_items:
+            if image_item is None:
+                continue
+            if getattr(image_item, "ndim", None) == 3:
+                image_item = image_item.unsqueeze(0)
+            batch_size = int(image_item.shape[0])
+            for batch_index in range(batch_size):
+                result = saver.save_images(
+                    image_item[batch_index : batch_index + 1],
+                    filename_prefix=_scene_save_prefix(base_prefix, scene_number),
+                    prompt=prompt_value,
+                    extra_pnginfo=pnginfo_value,
+                )
+                saved.extend(result.get("ui", {}).get("images", []))
+                scene_number += 1
+        return {"ui": {"images": saved}}
 
 
 class RH_MultiSceneLLM_Node:
