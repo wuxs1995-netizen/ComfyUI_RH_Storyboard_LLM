@@ -15,6 +15,10 @@ DEFAULT_SCENE_ROLE = """You are a professional cinematic storyboard prompt write
 Turn exactly one scene into a production-ready image-generation prompt.
 Preserve the shared character and visual style. Return JSON only."""
 
+DEFAULT_DIRECTOR_ROLE = """你是一名专业影视分镜总导演。
+根据用户故事和可选参考人物图，创建结构严格、镜头连续的短片分镜大纲。
+你必须保持角色外貌、服装、身份、道具和环境状态的一致性，并且只返回合法 JSON。"""
+
 DEFAULT_SCENE_INSTRUCTION = """Generate one storyboard frame for the current scene.
 
 Requirements:
@@ -22,7 +26,7 @@ Requirements:
 2. Describe only the current scene.
 3. State shot size, composition, camera angle, lighting, environment and action.
 4. Use concrete visual language rather than abstract literary language.
-5. Write the positive prompt in English.
+5. Write the positive and negative prompts in the requested prompt language.
 6. Return valid JSON only in this shape:
 {
   "scene_id": 1,
@@ -31,6 +35,17 @@ Requirements:
   "camera": "...",
   "continuity_note": "..."
 }"""
+
+ASPECT_PRESETS = {
+    "16:9": (1024, 576),
+    "9:16": (576, 1024),
+    "1:1": (1024, 1024),
+    "4:3": (1024, 768),
+    "3:4": (768, 1024),
+    "3:2": (1152, 768),
+    "2:3": (768, 1152),
+    "21:9": (1344, 576),
+}
 
 
 def encode_image_b64(ref_image):
@@ -146,6 +161,7 @@ def _build_scene_request(outline, scenes, scene_index, instruction):
         "story_title": outline.get("title", ""),
         "character_bible": outline.get("character_bible", {}),
         "style_bible": outline.get("style_bible", {}),
+        "generation_settings": outline.get("generation_settings", {}),
         "current_scene": scene,
         "previous_scene": previous_scene,
         "next_scene": next_scene,
@@ -264,6 +280,52 @@ class RH_SceneJSONSplitter_Node:
         )
 
 
+class RH_StoryboardPromptSelector_Node:
+    """Select one generated shot from RH Multi Scene LLM's storyboard JSON."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "storyboard_json": ("STRING", {"forceInput": True}),
+                "scene_number": ("INT", {"default": 1, "min": 1, "max": 999}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING", "INT", "BOOLEAN")
+    RETURN_NAMES = (
+        "positive_prompt",
+        "negative_prompt",
+        "camera",
+        "continuity_note",
+        "shot_json",
+        "scene_count",
+        "active",
+    )
+    FUNCTION = "select_prompt"
+    CATEGORY = "Runninghub/Storyboard"
+
+    def select_prompt(self, storyboard_json, scene_number):
+        storyboard = _extract_json_text(storyboard_json)
+        shots = storyboard.get("shots")
+        if not isinstance(shots, list) or not shots:
+            raise ValueError("The storyboard JSON must contain a non-empty 'shots' array.")
+        if scene_number > len(shots):
+            return ("", "", "", "", "", len(shots), False)
+        shot = shots[scene_number - 1]
+        if not isinstance(shot, dict):
+            raise ValueError(f"shots[{scene_number - 1}] must be a JSON object.")
+        return (
+            str(shot.get("prompt", "")),
+            str(shot.get("negative_prompt", "")),
+            str(shot.get("camera", "")),
+            str(shot.get("continuity_note", "")),
+            _json_text(shot),
+            len(shots),
+            True,
+        )
+
+
 class RH_MultiSceneLLM_Node:
     """Fan out one independent OpenAI-compatible request per scene."""
 
@@ -278,7 +340,6 @@ class RH_MultiSceneLLM_Node:
                 "role": ("STRING", {"multiline": True, "default": DEFAULT_SCENE_ROLE}),
                 "instruction": ("STRING", {"multiline": True, "default": DEFAULT_SCENE_INSTRUCTION}),
                 "temperature": ("FLOAT", {"default": 0.4, "min": 0.0, "max": 2.0, "step": 0.05}),
-                "seed": ("INT", {"default": 100, "min": 0, "max": 0xFFFFFFFF}),
                 "max_workers": ("INT", {"default": 4, "min": 1, "max": 16}),
             },
             "optional": {
@@ -301,7 +362,6 @@ class RH_MultiSceneLLM_Node:
         role,
         instruction,
         temperature,
-        seed,
         max_workers,
         ref_image=None,
     ):
@@ -330,7 +390,6 @@ class RH_MultiSceneLLM_Node:
                     {"role": "user", "content": user_content},
                 ],
                 temperature=temperature,
-                seed=(seed + index) & 0xFFFFFFFF,
             )
             raw = _completion_text(completion)
             try:
@@ -361,3 +420,188 @@ class RH_MultiSceneLLM_Node:
             "shots": ordered,
         }
         return positive, negative, _json_text(storyboard), len(scenes)
+
+
+class RH_ConfigurableStoryboard_Node:
+    """Generate a configurable outline and fan out one prompt request per scene."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "api_baseurl": ("STRING", {"multiline": False, "default": "http://127.0.0.1:8000/v1"}),
+                "api_key": ("STRING", {"default": ""}),
+                "model": ("STRING", {"default": ""}),
+                "story": ("STRING", {"multiline": True, "default": "一个人物经历一次意外发现，并做出改变命运的选择。"}),
+                "scene_count": ("INT", {"default": 8, "min": 1, "max": 12}),
+                "prompt_language": (["中文", "English"], {"default": "中文"}),
+                "aspect_ratio": (list(ASPECT_PRESETS.keys()), {"default": "16:9"}),
+                "director_role": ("STRING", {"multiline": True, "default": DEFAULT_DIRECTOR_ROLE}),
+                "prompt_writer_role": ("STRING", {"multiline": True, "default": DEFAULT_SCENE_ROLE}),
+                "outline_temperature": ("FLOAT", {"default": 0.35, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "prompt_temperature": ("FLOAT", {"default": 0.4, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "max_workers": ("INT", {"default": 4, "min": 1, "max": 12}),
+            },
+            "optional": {
+                "ref_image": ("IMAGE",),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "INT", "STRING", "STRING", "INT", "INT")
+    RETURN_NAMES = (
+        "outline_json",
+        "storyboard_json",
+        "positive_prompts",
+        "negative_prompts",
+        "scene_count",
+        "prompt_language",
+        "aspect_ratio",
+        "width",
+        "height",
+    )
+    OUTPUT_IS_LIST = (False, False, True, True, False, False, False, False, False)
+    FUNCTION = "generate_storyboard"
+    CATEGORY = "Runninghub/Storyboard"
+
+    def _director_request(self, story, scene_count, prompt_language, aspect_ratio):
+        return f"""根据以下故事创建恰好 {scene_count} 个连续分镜。
+
+故事：
+{story}
+
+最终图像提示词语言：{prompt_language}
+所有镜头画面横宽比：{aspect_ratio}
+
+要求：
+1. scenes 数组必须恰好包含 {scene_count} 项，scene_id 从 1 连续编号。
+2. 每个场景只包含一个明确动作，并记录地点、时间、景别、机位、动作、情绪和连续性。
+3. character_bible 必须固定人物外貌、服装和身份。
+4. style_bible 必须固定视觉风格、色彩和 aspect_ratio={aspect_ratio}。
+5. generation_settings 必须原样记录 scene_count、prompt_language 和 aspect_ratio。
+6. 只输出合法 JSON，不要 Markdown，不要解释。
+
+输出结构：
+{{
+  "title": "故事标题",
+  "character_bible": {{"appearance": "", "clothing": "", "identity": ""}},
+  "style_bible": {{"visual_style": "", "color_palette": "", "aspect_ratio": "{aspect_ratio}"}},
+  "generation_settings": {{"scene_count": {scene_count}, "prompt_language": "{prompt_language}", "aspect_ratio": "{aspect_ratio}"}},
+  "scenes": [
+    {{"scene_id": 1, "duration": 4, "location": "", "time": "", "shot_type": "", "camera": "", "action": "", "emotion": "", "dialogue": "", "continuity": ""}}
+  ]
+}}"""
+
+    def _call_director(self, client, model, role, request_text, temperature, image_b64):
+        if image_b64:
+            user_content = [
+                {"type": "text", "text": request_text},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+            ]
+        else:
+            user_content = request_text
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": role},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=temperature,
+        )
+        return _completion_text(completion)
+
+    def generate_storyboard(
+        self,
+        api_baseurl,
+        api_key,
+        model,
+        story,
+        scene_count,
+        prompt_language,
+        aspect_ratio,
+        director_role,
+        prompt_writer_role,
+        outline_temperature,
+        prompt_temperature,
+        max_workers,
+        ref_image=None,
+    ):
+        client = OpenAI(api_key=api_key, base_url=api_baseurl)
+        image_b64 = encode_image_b64(ref_image) if ref_image is not None else None
+        request_text = self._director_request(story, scene_count, prompt_language, aspect_ratio)
+        raw_outline = self._call_director(
+            client, model, director_role, request_text, outline_temperature, image_b64
+        )
+        outline = _extract_json_text(raw_outline)
+        scenes = outline.get("scenes")
+
+        if not isinstance(scenes, list) or len(scenes) != scene_count:
+            actual = len(scenes) if isinstance(scenes, list) else 0
+            repair = f"""上一次 JSON 包含 {actual} 个场景，但必须是恰好 {scene_count} 个。
+请保持故事、人物和风格不变，重新输出完整合法 JSON。scenes 必须恰好有 {scene_count} 项。
+只输出 JSON。
+
+上一次输出：
+{raw_outline}"""
+            raw_outline = self._call_director(
+                client, model, director_role, repair, 0.1, image_b64
+            )
+            outline = _extract_json_text(raw_outline)
+            scenes = outline.get("scenes")
+
+        if not isinstance(scenes, list) or len(scenes) < scene_count:
+            actual = len(scenes) if isinstance(scenes, list) else 0
+            raise ValueError(f"Director returned {actual} scenes; expected exactly {scene_count}.")
+        if len(scenes) > scene_count:
+            scenes = scenes[:scene_count]
+            outline["scenes"] = scenes
+
+        for index, scene in enumerate(scenes, start=1):
+            if not isinstance(scene, dict):
+                raise ValueError(f"scenes[{index - 1}] must be a JSON object.")
+            scene["scene_id"] = index
+
+        style_bible = outline.get("style_bible")
+        if not isinstance(style_bible, dict):
+            style_bible = {}
+            outline["style_bible"] = style_bible
+        style_bible["aspect_ratio"] = aspect_ratio
+        outline["generation_settings"] = {
+            "scene_count": scene_count,
+            "prompt_language": prompt_language,
+            "aspect_ratio": aspect_ratio,
+        }
+        outline_json = _json_text(outline)
+
+        language_instruction = (
+            "Write every prompt entirely in Simplified Chinese."
+            if prompt_language == "中文"
+            else "Write every prompt entirely in English."
+        )
+        instruction = (
+            DEFAULT_SCENE_INSTRUCTION
+            + f"\n7. {language_instruction}"
+            + f"\n8. Compose every frame for an aspect ratio of {aspect_ratio}."
+        )
+        positive, negative, storyboard_json, actual_count = RH_MultiSceneLLM_Node().generate_scene_prompts(
+            outline_json,
+            api_baseurl,
+            api_key,
+            model,
+            prompt_writer_role,
+            instruction,
+            prompt_temperature,
+            max_workers,
+            ref_image,
+        )
+        width, height = ASPECT_PRESETS[aspect_ratio]
+        return (
+            outline_json,
+            storyboard_json,
+            positive,
+            negative,
+            actual_count,
+            prompt_language,
+            aspect_ratio,
+            width,
+            height,
+        )

@@ -6,6 +6,10 @@ This repository is based on [`HM-RunningHub/ComfyUI_RH_LLM_API`](https://github.
 
 ## Nodes
 
+### RH Storyboard - Configurable Director
+
+Runs the complete director pipeline from one node. Choose 1–12 scenes, Chinese or English final prompts, and a common aspect ratio. The node generates the outline, fans out the per-scene LLM calls, and returns positive/negative prompt lists plus width and height outputs that can connect to a latent-image node.
+
 ### Runninghub LLM API Node
 
 Makes one OpenAI-compatible chat-completions request. It supports text, an optional reference image, or an optional video.
@@ -34,6 +38,10 @@ Outputs:
 - `scene_count`: the number of generated scenes.
 
 The prompt lists can be connected to text-encoding and image-generation nodes. ComfyUI maps downstream execution across list elements.
+
+### RH Storyboard - Select Scene Prompt
+
+Takes the combined `storyboard_json` output and selects one scene by number. It returns separate positive prompt, negative prompt, camera, continuity note and shot JSON outputs. Duplicate this node for each visible storyboard branch when you want every scene connected to its own preview or image-generation workflow.
 
 ## Expected director JSON
 
@@ -86,11 +94,13 @@ supervisorctl restart comfyui
 
 After restarting ComfyUI, hard-refresh the browser and search for `RH Storyboard`.
 
-## Demo workflow
+## Bundled workflows
 
-Import [`workflows/RH_parallel_storyboard_demo.json`](workflows/RH_parallel_storyboard_demo.json). Add a new API key locally after importing; the workflow intentionally contains no API key.
+- [`workflows/RH_parallel_storyboard_demo.json`](workflows/RH_parallel_storyboard_demo.json) demonstrates the parallel prompt pipeline with eight separate scene previews.
+- [`workflows/RH_configurable_director_1_to_12_scenes.json`](workflows/RH_configurable_director_1_to_12_scenes.json) adds selectable scene count, prompt language and aspect ratio, with up to twelve independently connectable scene branches.
+- [`workflows/RH_configurable_director_Krea2Image_batch.json`](workflows/RH_configurable_director_Krea2Image_batch.json) maps the generated prompt list through the bundled Krea2Image subgraph definition, forwards the selected width and height, and saves the resulting storyboard images through an external list-safe `SaveImage` node.
 
-The demo stops at the ordered positive/negative prompt lists because checkpoint, conditioning, and sampler choices differ between installations. Connect those list outputs to your preferred image-generation pipeline to render one frame per scene.
+Add a new API key locally after importing any workflow; exported workflow files intentionally contain no API key. The Krea2Image workflow also requires the models and custom nodes used by the original Krea2Image blueprint to be installed on the ComfyUI instance.
 
 ## Security
 
