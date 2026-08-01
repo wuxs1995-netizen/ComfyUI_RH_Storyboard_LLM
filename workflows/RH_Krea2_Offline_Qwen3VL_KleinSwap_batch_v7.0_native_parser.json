@@ -5137,8 +5137,8 @@
     },
     "rh_numbered_outputs": {
       "node": "RH_STORYBOARD_SCENE_SAVE",
-      "folder": "RH_Krea2_Offline_Storyboard",
-      "filenames": "Scene_01_*.png, Scene_02_*.png, ..."
+      "folder": "output root",
+      "filenames": "RH_Krea2_Offline_Storyboard_Scene_01_*.png, RH_Krea2_Offline_Storyboard_Scene_02_*.png, ..."
     }
   },
   "version": 0.4,
