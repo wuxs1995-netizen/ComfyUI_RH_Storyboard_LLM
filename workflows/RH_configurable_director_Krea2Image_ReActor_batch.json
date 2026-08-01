@@ -1,8 +1,8 @@
 {
   "id": "rh-configurable-director-krea2-reactor",
-  "revision": 1,
+  "revision": 2,
   "last_node_id": 40,
-  "last_link_id": 20038,
+  "last_link_id": 30038,
   "nodes": [
     {
       "id": 1,
@@ -25,8 +25,8 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            20001,
-            20037
+            30001,
+            30037
           ]
         },
         {
@@ -65,7 +65,7 @@
           "name": "ref_image",
           "shape": 7,
           "type": "IMAGE",
-          "link": 20001
+          "link": 30001
         }
       ],
       "outputs": [
@@ -73,33 +73,33 @@
           "name": "outline_json",
           "type": "STRING",
           "links": [
-            20002
+            30002
           ]
         },
         {
           "name": "storyboard_json",
           "type": "STRING",
           "links": [
-            20003,
-            20006,
-            20007,
-            20008,
-            20009,
-            20010,
-            20011,
-            20012,
-            20013,
-            20014,
-            20015,
-            20016,
-            20017
+            30003,
+            30006,
+            30007,
+            30008,
+            30009,
+            30010,
+            30011,
+            30012,
+            30013,
+            30014,
+            30015,
+            30016,
+            30017
           ]
         },
         {
           "name": "positive_prompts",
           "type": "STRING",
           "links": [
-            20030
+            30030
           ],
           "shape": 6
         },
@@ -172,7 +172,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20002
+          "link": 30002
         }
       ],
       "outputs": [
@@ -208,7 +208,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20003
+          "link": 30003
         }
       ],
       "outputs": [
@@ -244,7 +244,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20004
+          "link": 30004
         }
       ],
       "outputs": [
@@ -280,7 +280,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20005
+          "link": 30005
         }
       ],
       "outputs": [
@@ -316,7 +316,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20006
+          "link": 30006
         }
       ],
       "outputs": [
@@ -324,7 +324,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20018
+            30018
           ]
         },
         {
@@ -384,7 +384,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20018
+          "link": 30018
         }
       ],
       "outputs": [
@@ -420,7 +420,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20007
+          "link": 30007
         }
       ],
       "outputs": [
@@ -428,7 +428,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20019
+            30019
           ]
         },
         {
@@ -488,7 +488,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20019
+          "link": 30019
         }
       ],
       "outputs": [
@@ -524,7 +524,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20008
+          "link": 30008
         }
       ],
       "outputs": [
@@ -532,7 +532,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20020
+            30020
           ]
         },
         {
@@ -592,7 +592,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20020
+          "link": 30020
         }
       ],
       "outputs": [
@@ -628,7 +628,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20009
+          "link": 30009
         }
       ],
       "outputs": [
@@ -636,7 +636,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20021
+            30021
           ]
         },
         {
@@ -696,7 +696,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20021
+          "link": 30021
         }
       ],
       "outputs": [
@@ -732,7 +732,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20010
+          "link": 30010
         }
       ],
       "outputs": [
@@ -740,7 +740,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20022
+            30022
           ]
         },
         {
@@ -800,7 +800,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20022
+          "link": 30022
         }
       ],
       "outputs": [
@@ -836,7 +836,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20011
+          "link": 30011
         }
       ],
       "outputs": [
@@ -844,7 +844,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20023
+            30023
           ]
         },
         {
@@ -904,7 +904,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20023
+          "link": 30023
         }
       ],
       "outputs": [
@@ -940,7 +940,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20012
+          "link": 30012
         }
       ],
       "outputs": [
@@ -948,7 +948,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20024
+            30024
           ]
         },
         {
@@ -1008,7 +1008,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20024
+          "link": 30024
         }
       ],
       "outputs": [
@@ -1044,7 +1044,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20013
+          "link": 30013
         }
       ],
       "outputs": [
@@ -1052,7 +1052,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20025
+            30025
           ]
         },
         {
@@ -1112,7 +1112,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20025
+          "link": 30025
         }
       ],
       "outputs": [
@@ -1148,7 +1148,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20014
+          "link": 30014
         }
       ],
       "outputs": [
@@ -1156,7 +1156,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20026
+            30026
           ]
         },
         {
@@ -1216,7 +1216,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20026
+          "link": 30026
         }
       ],
       "outputs": [
@@ -1252,7 +1252,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20015
+          "link": 30015
         }
       ],
       "outputs": [
@@ -1260,7 +1260,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20027
+            30027
           ]
         },
         {
@@ -1320,7 +1320,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20027
+          "link": 30027
         }
       ],
       "outputs": [
@@ -1356,7 +1356,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20016
+          "link": 30016
         }
       ],
       "outputs": [
@@ -1364,7 +1364,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20028
+            30028
           ]
         },
         {
@@ -1424,7 +1424,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20028
+          "link": 30028
         }
       ],
       "outputs": [
@@ -1460,7 +1460,7 @@
         {
           "name": "storyboard_json",
           "type": "STRING",
-          "link": 20017
+          "link": 30017
         }
       ],
       "outputs": [
@@ -1468,7 +1468,7 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            20029
+            30029
           ]
         },
         {
@@ -1528,7 +1528,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 20029
+          "link": 30029
         }
       ],
       "outputs": [
@@ -1570,7 +1570,7 @@
           "localized_name": "string2",
           "name": "string2",
           "type": "STRING",
-          "link": 20030
+          "link": 30030
         },
         {
           "name": "seed",
@@ -1624,13 +1624,13 @@
           "localized_name": "width",
           "name": "width",
           "type": "INT",
-          "link": 20031
+          "link": 30031
         },
         {
           "localized_name": "height",
           "name": "height",
           "type": "INT",
-          "link": 20032
+          "link": 30032
         }
       ],
       "outputs": [
@@ -1638,14 +1638,14 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            20036
+            30036
           ]
         },
         {
           "name": "IMAGE_1",
           "type": "IMAGE",
           "links": [
-            20034
+            30034
           ]
         }
       ],
@@ -1695,7 +1695,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 20033
+          "link": 30033
         }
       ],
       "outputs": [],
@@ -1725,7 +1725,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 20034
+          "link": 30034
         }
       ],
       "outputs": [],
@@ -1757,7 +1757,7 @@
           "localized_name": "图片",
           "name": "images",
           "type": "IMAGE",
-          "link": 20035
+          "link": 30035
         },
         {
           "localized_name": "文件名前缀",
@@ -1823,8 +1823,8 @@
           "name": "width",
           "type": "INT",
           "links": [
-            20004,
-            20031
+            30004,
+            30031
           ]
         },
         {
@@ -1832,8 +1832,8 @@
           "name": "height",
           "type": "INT",
           "links": [
-            20005,
-            20032
+            30005,
+            30032
           ]
         },
         {
@@ -1949,7 +1949,7 @@
         {
           "name": "input_image",
           "type": "IMAGE",
-          "link": 20036
+          "link": 30036
         },
         {
           "name": "swap_model",
@@ -2034,7 +2034,7 @@
         {
           "name": "source_image",
           "type": "IMAGE",
-          "link": 20037
+          "link": 30037
         },
         {
           "name": "face_model",
@@ -2052,20 +2052,20 @@
           "name": "SWAPPED_IMAGE",
           "type": "IMAGE",
           "links": [
-            20033,
-            20035
+            30033,
+            30035
           ]
         },
         {
           "name": "FACE_MODEL",
           "type": "FACE_MODEL",
-          "links": []
+          "links": null
         },
         {
           "name": "ORIGINAL_IMAGE",
           "type": "IMAGE",
           "links": [
-            20038
+            30038
           ]
         }
       ],
@@ -2110,7 +2110,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 20038
+          "link": 30038
         }
       ],
       "outputs": [],
@@ -2124,7 +2124,7 @@
   ],
   "links": [
     [
-      20001,
+      30001,
       1,
       0,
       2,
@@ -2132,7 +2132,7 @@
       "IMAGE"
     ],
     [
-      20002,
+      30002,
       2,
       0,
       3,
@@ -2140,7 +2140,7 @@
       "STRING"
     ],
     [
-      20003,
+      30003,
       2,
       1,
       4,
@@ -2148,7 +2148,7 @@
       "STRING"
     ],
     [
-      20004,
+      30004,
       38,
       0,
       5,
@@ -2156,7 +2156,7 @@
       "INT"
     ],
     [
-      20005,
+      30005,
       38,
       1,
       6,
@@ -2164,7 +2164,7 @@
       "INT"
     ],
     [
-      20006,
+      30006,
       2,
       1,
       10,
@@ -2172,7 +2172,7 @@
       "STRING"
     ],
     [
-      20007,
+      30007,
       2,
       1,
       11,
@@ -2180,7 +2180,7 @@
       "STRING"
     ],
     [
-      20008,
+      30008,
       2,
       1,
       12,
@@ -2188,7 +2188,7 @@
       "STRING"
     ],
     [
-      20009,
+      30009,
       2,
       1,
       13,
@@ -2196,7 +2196,7 @@
       "STRING"
     ],
     [
-      20010,
+      30010,
       2,
       1,
       14,
@@ -2204,7 +2204,7 @@
       "STRING"
     ],
     [
-      20011,
+      30011,
       2,
       1,
       15,
@@ -2212,7 +2212,7 @@
       "STRING"
     ],
     [
-      20012,
+      30012,
       2,
       1,
       16,
@@ -2220,7 +2220,7 @@
       "STRING"
     ],
     [
-      20013,
+      30013,
       2,
       1,
       17,
@@ -2228,7 +2228,7 @@
       "STRING"
     ],
     [
-      20014,
+      30014,
       2,
       1,
       18,
@@ -2236,7 +2236,7 @@
       "STRING"
     ],
     [
-      20015,
+      30015,
       2,
       1,
       19,
@@ -2244,7 +2244,7 @@
       "STRING"
     ],
     [
-      20016,
+      30016,
       2,
       1,
       20,
@@ -2252,7 +2252,7 @@
       "STRING"
     ],
     [
-      20017,
+      30017,
       2,
       1,
       21,
@@ -2260,7 +2260,7 @@
       "STRING"
     ],
     [
-      20018,
+      30018,
       10,
       0,
       22,
@@ -2268,7 +2268,7 @@
       "STRING"
     ],
     [
-      20019,
+      30019,
       11,
       0,
       23,
@@ -2276,7 +2276,7 @@
       "STRING"
     ],
     [
-      20020,
+      30020,
       12,
       0,
       24,
@@ -2284,7 +2284,7 @@
       "STRING"
     ],
     [
-      20021,
+      30021,
       13,
       0,
       25,
@@ -2292,7 +2292,7 @@
       "STRING"
     ],
     [
-      20022,
+      30022,
       14,
       0,
       26,
@@ -2300,7 +2300,7 @@
       "STRING"
     ],
     [
-      20023,
+      30023,
       15,
       0,
       27,
@@ -2308,7 +2308,7 @@
       "STRING"
     ],
     [
-      20024,
+      30024,
       16,
       0,
       28,
@@ -2316,7 +2316,7 @@
       "STRING"
     ],
     [
-      20025,
+      30025,
       17,
       0,
       29,
@@ -2324,7 +2324,7 @@
       "STRING"
     ],
     [
-      20026,
+      30026,
       18,
       0,
       30,
@@ -2332,7 +2332,7 @@
       "STRING"
     ],
     [
-      20027,
+      30027,
       19,
       0,
       31,
@@ -2340,7 +2340,7 @@
       "STRING"
     ],
     [
-      20028,
+      30028,
       20,
       0,
       32,
@@ -2348,7 +2348,7 @@
       "STRING"
     ],
     [
-      20029,
+      30029,
       21,
       0,
       33,
@@ -2356,7 +2356,7 @@
       "STRING"
     ],
     [
-      20030,
+      30030,
       2,
       2,
       34,
@@ -2364,7 +2364,7 @@
       "STRING"
     ],
     [
-      20031,
+      30031,
       38,
       0,
       34,
@@ -2372,7 +2372,7 @@
       "INT"
     ],
     [
-      20032,
+      30032,
       38,
       1,
       34,
@@ -2380,7 +2380,7 @@
       "INT"
     ],
     [
-      20033,
+      30033,
       39,
       0,
       35,
@@ -2388,7 +2388,7 @@
       "IMAGE"
     ],
     [
-      20034,
+      30034,
       34,
       1,
       36,
@@ -2396,7 +2396,7 @@
       "IMAGE"
     ],
     [
-      20035,
+      30035,
       39,
       0,
       37,
@@ -2404,7 +2404,7 @@
       "IMAGE"
     ],
     [
-      20036,
+      30036,
       34,
       0,
       39,
@@ -2412,7 +2412,7 @@
       "IMAGE"
     ],
     [
-      20037,
+      30037,
       1,
       0,
       39,
@@ -2420,7 +2420,7 @@
       "IMAGE"
     ],
     [
-      20038,
+      30038,
       39,
       2,
       40,
@@ -2607,13 +2607,19 @@
         100
       ]
     },
-    "rh_workflow_version": "krea2image-batch-v5.1-reactor-unique-links",
-    "rh_root_link_namespace": "200xx-global-unique",
+    "rh_workflow_version": "krea2image-batch-v5.3-reactor-comfyui-0.4-compatible",
+    "rh_root_link_namespace": "300xx-rebuilt",
     "ue_links": [],
     "links_added_by_ue": [],
-    "anomalous_hashes": {}
+    "anomalous_hashes": {},
+    "rh_link_repair": {
+      "rebuilt": true,
+      "root_link_count": 38,
+      "source_version": "v5.1",
+      "compatibility": "ComfyUI workflow schema 0.4"
+    }
   },
-  "version": 0.5,
+  "version": 0.4,
   "definitions": {
     "subgraphs": [
       {
