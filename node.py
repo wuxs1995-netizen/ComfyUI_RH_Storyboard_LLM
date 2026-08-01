@@ -47,12 +47,18 @@ ASPECT_PRESETS = {
     "21:9": (1344, 576),
 }
 
-DEFAULT_OFFLINE_DIRECTOR_INSTRUCTION = """You are a local cinematic storyboard director and Krea 2 prompt engineer.
-Turn the supplied story into a chronological storyboard with exactly the requested number of scenes.
-Keep character identity, face, age, hairstyle, clothing, props, environment, time, weather and visual style consistent.
-Each scene must contain one clear visual action and a production-ready image prompt with shot size, camera angle, composition, lighting, environment, emotion and material detail.
+DEFAULT_OFFLINE_DIRECTOR_INSTRUCTION = """You are a local cinematic storyboard continuity director.
+First create one canonical character bible from the story and optional reference image, then create a chronological scene outline.
+The character's identity, face, age, hairstyle, hair accessories, clothing and signature props are IMMUTABLE across every scene unless the story explicitly requires a change.
+Location, action, emotion, shot size, camera angle, composition, lighting, time and weather are MUTABLE scene variables.
 Use the optional reference image only for character identity and appearance; never copy its background or pose.
 Return valid JSON only. Do not use Markdown, explanations, comments or text outside the JSON object."""
+
+DEFAULT_OFFLINE_SCENE_INSTRUCTION = """You are a cinematic Krea 2 prompt engineer.
+Generate exactly one production-ready image prompt for the supplied scene package.
+Treat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.
+Describe only the current scene's mutable action, emotion, environment, camera, composition and lighting.
+Return valid JSON only. Do not use Markdown or commentary."""
 
 OFFLINE_PROMPT_KEYS = ("prompt", "positive_prompt", "image_prompt", "visual_prompt")
 OFFLINE_SCENE_DETAIL_KEYS = (
@@ -180,6 +186,50 @@ def _json_text(value):
     return json.dumps(value, ensure_ascii=False, indent=2)
 
 
+def _bible_anchor(bible):
+    """Render a stable, reusable text anchor from a character/style bible."""
+    if not isinstance(bible, dict):
+        return ""
+    values = []
+    for key, value in bible.items():
+        if value in (None, "", [], {}):
+            continue
+        if isinstance(value, str):
+            rendered = value.strip()
+        else:
+            rendered = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+        if rendered:
+            values.append(f"{key}: {rendered}")
+    return "; ".join(values)
+
+
+def _locked_prompt(prompt, character_bible, style_bible, aspect_ratio, prompt_language):
+    """Prefix every scene with the exact same immutable continuity anchors."""
+    raw_prompt = str(prompt or "").strip()
+    character_anchor = _bible_anchor(character_bible)
+    style_anchor = _bible_anchor(style_bible)
+    if not character_anchor:
+        return raw_prompt, character_anchor, style_anchor
+
+    if str(prompt_language).strip().lower() == "english":
+        parts = [
+            str(aspect_ratio).strip(),
+            f"CHARACTER CONTINUITY LOCK (identical in every shot; do not alter): {character_anchor}",
+        ]
+        if style_anchor:
+            parts.append(f"STYLE LOCK: {style_anchor}")
+        parts.append(f"CURRENT SHOT: {raw_prompt}")
+    else:
+        parts = [
+            str(aspect_ratio).strip(),
+            f"人物连续性锁定（所有镜头必须完全一致，不得改动）：{character_anchor}",
+        ]
+        if style_anchor:
+            parts.append(f"视觉风格锁定：{style_anchor}")
+        parts.append(f"当前镜头：{raw_prompt}")
+    return ", ".join(part for part in parts if part), character_anchor, style_anchor
+
+
 def _extract_first_json_value(value):
     """Return the first JSON object/array from raw or Markdown-wrapped model text."""
     if isinstance(value, (dict, list)):
@@ -300,6 +350,8 @@ def parse_offline_storyboard_text(generated_text, scene_count, default_negative_
             if isinstance(candidate, list):
                 scene_values = candidate
                 break
+        if scene_values is None and any(parsed.get(key) for key in OFFLINE_PROMPT_KEYS):
+            scene_values = [parsed]
     elif isinstance(parsed, list):
         scene_values = parsed
 
@@ -525,7 +577,7 @@ class RH_StoryboardPromptSelector_Node:
 
 
 class RH_OfflineStoryboardRequest_Node:
-    """Build a strict local-Qwen request without contacting any API."""
+    """Build the first-pass character bible and storyboard-outline request."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -550,14 +602,13 @@ class RH_OfflineStoryboardRequest_Node:
 
     RETURN_TYPES = ("STRING", "INT", "STRING", "STRING", "INT", "INT")
     RETURN_NAMES = (
-        "qwen_prompts",
+        "qwen_prompt",
         "scene_count",
         "prompt_language",
         "aspect_ratio",
         "width",
         "height",
     )
-    OUTPUT_IS_LIST = (True, False, False, False, False, False)
     FUNCTION = "build_request"
     CATEGORY = "Runninghub/Storyboard/Offline"
 
@@ -574,46 +625,132 @@ class RH_OfflineStoryboardRequest_Node:
             if prompt_language == "中文"
             else "Every prompt value must be written entirely in English."
         )
-        requests = []
-        for scene_number in range(1, scene_count + 1):
-            beat = _offline_scene_beat(scene_number, scene_count)
-            request = f"""{director_instruction.strip()}
+        scene_shape = ",\n    ".join(
+            f'{{"scene_id": {scene_number}, "location": "", "time": "", "shot_type": "", '
+            '"camera": "", "action": "", "emotion": "", "lighting": "", "continuity": ""}'
+            for scene_number in range(1, scene_count + 1)
+        )
+        request = f"""{director_instruction.strip()}
 
 STORY:
 {story.strip()}
 
 SETTINGS:
-- This request is for scene {scene_number} of {scene_count}.
+- Required scene count: {scene_count}
 - Prompt language: {prompt_language}
 - Aspect ratio: {aspect_ratio}
 
-NARRATIVE FUNCTION FOR THIS SCENE:
-{beat}
-
 REQUIREMENTS:
-1. Return exactly one scene object inside the scenes array, with scene_id={scene_number}.
+1. Analyze the protagonist once and create exactly one canonical character_bible.
 2. {language_rule}
-3. Every scene.prompt must be a single line with no internal newline.
-4. Every prompt must explicitly preserve the shared character identity and the aspect ratio {aspect_ratio}.
-5. Do not summarize the whole story and do not combine multiple shots in one prompt.
-6. Make this scene visually and narratively appropriate for position {scene_number}/{scene_count}.
+3. character_bible must explicitly lock identity, age, facial features, hairstyle, hair accessories, clothing and signature props. These values must never change between scenes.
+4. Scene entries must contain only mutable story progression: location, time, action, emotion, shot type, camera, lighting and continuity.
+5. scenes must contain exactly {scene_count} items with scene_id values 1 through {scene_count}.
+6. Do not write final image-generation prompts in this planning pass.
 7. Return only this JSON shape:
 {{
-  "character_bible": {{"appearance": "", "clothing": "", "identity": ""}},
+  "title": "",
+  "character_bible": {{"identity": "", "age": "", "facial_features": "", "hairstyle": "", "hair_accessories": "", "clothing": "", "signature_props": ""}},
   "style_bible": {{"visual_style": "", "color_palette": "", "aspect_ratio": "{aspect_ratio}"}},
   "scenes": [
-    {{
-      "scene_id": {scene_number},
-      "prompt": "",
-      "negative_prompt": "blurry face, deformed anatomy, extra fingers, low quality",
-      "camera": "",
-      "continuity_note": ""
-    }}
+    {scene_shape}
   ]
 }}"""
-            requests.append(request)
         width, height = ASPECT_PRESETS[aspect_ratio]
-        return requests, scene_count, prompt_language, aspect_ratio, width, height
+        return request, scene_count, prompt_language, aspect_ratio, width, height
+
+
+class RH_OfflineStoryboardSceneRequests_Node:
+    """Turn one locked outline into per-scene requests sharing the same bibles."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "outline_text": ("STRING", {"forceInput": True}),
+                "scene_count": ("INT", {"default": 8, "min": 1, "max": 12, "forceInput": True}),
+                "prompt_language": ("STRING", {"forceInput": True}),
+                "aspect_ratio": ("STRING", {"forceInput": True}),
+                "scene_instruction": (
+                    "STRING",
+                    {"multiline": True, "default": DEFAULT_OFFLINE_SCENE_INSTRUCTION},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "INT", "STRING", "STRING")
+    RETURN_NAMES = ("qwen_prompts", "outline_json", "scene_count", "prompt_language", "aspect_ratio")
+    OUTPUT_IS_LIST = (True, False, False, False, False)
+    FUNCTION = "build_scene_requests"
+    CATEGORY = "Runninghub/Storyboard/Offline"
+
+    def build_scene_requests(
+        self,
+        outline_text,
+        scene_count,
+        prompt_language,
+        aspect_ratio,
+        scene_instruction,
+    ):
+        requested_count = int(scene_count)
+        outline, scenes = _parse_outline(outline_text)
+        if len(scenes) != requested_count:
+            raise ValueError(
+                f"Local Qwen outline returned {len(scenes)} scenes; expected exactly {requested_count}. "
+                "Increase the planning TextGenerate max_length and run again."
+            )
+        character_bible = outline.get("character_bible")
+        if not _bible_anchor(character_bible):
+            raise ValueError("The local Qwen outline did not return a usable character_bible.")
+        style_bible = outline.get("style_bible")
+        if not isinstance(style_bible, dict):
+            style_bible = {}
+            outline["style_bible"] = style_bible
+        style_bible["aspect_ratio"] = str(aspect_ratio)
+        outline["scenes"] = scenes
+        outline["generation_settings"] = {
+            "mode": "offline_qwen_two_pass",
+            "scene_count": requested_count,
+            "prompt_language": str(prompt_language),
+            "aspect_ratio": str(aspect_ratio),
+        }
+
+        language_rule = (
+            "Write prompt values entirely in English."
+            if str(prompt_language).strip().lower() == "english"
+            else "所有 prompt 字段必须完全使用简体中文。"
+        )
+        requests = []
+        for index, scene in enumerate(scenes):
+            previous_scene = scenes[index - 1] if index > 0 else None
+            next_scene = scenes[index + 1] if index + 1 < len(scenes) else None
+            package = {
+                "character_lock": character_bible,
+                "style_lock": style_bible,
+                "current_scene": scene,
+                "previous_scene": previous_scene,
+                "next_scene": next_scene,
+            }
+            requests.append(
+                f"""{scene_instruction.strip()}
+
+{language_rule}
+The final prompt must use aspect ratio {aspect_ratio}.
+Do not invent or restate alternative character traits. The parser will prepend CHARACTER LOCK verbatim.
+
+SCENE PACKAGE:
+{_json_text(package)}
+
+Return only:
+{{
+  "scene_id": {index + 1},
+  "prompt": "",
+  "negative_prompt": "blurry face, deformed anatomy, extra fingers, low quality, inconsistent character, changed hairstyle, changed clothing",
+  "camera": "",
+  "continuity_note": ""
+}}"""
+            )
+        return requests, _json_text(outline), requested_count, str(prompt_language), str(aspect_ratio)
 
 
 class RH_OfflineStoryboardParser_Node:
@@ -634,7 +771,10 @@ class RH_OfflineStoryboardParser_Node:
                         "default": "blurry face, deformed anatomy, extra fingers, low quality, watermark, text",
                     },
                 ),
-            }
+            },
+            "optional": {
+                "outline_json": ("STRING", {"forceInput": True}),
+            },
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING", "INT")
@@ -651,6 +791,7 @@ class RH_OfflineStoryboardParser_Node:
         prompt_language,
         aspect_ratio,
         default_negative_prompt,
+        outline_json=None,
     ):
         def first(value):
             if isinstance(value, (list, tuple)):
@@ -662,11 +803,25 @@ class RH_OfflineStoryboardParser_Node:
         ratio = str(first(aspect_ratio) or "16:9")
         default_negative = str(first(default_negative_prompt) or "").strip()
         texts = list(generated_text) if isinstance(generated_text, (list, tuple)) else [generated_text]
+        canonical_outline = None
+        supplied_outline = first(outline_json)
+        if isinstance(supplied_outline, str) and supplied_outline.strip():
+            canonical_outline, outline_scenes = _parse_outline(supplied_outline)
+            if len(outline_scenes) != requested_count:
+                raise ValueError(
+                    f"The locked outline contains {len(outline_scenes)} scenes; expected {requested_count}."
+                )
 
         if len(texts) > 1:
             shots = []
+            fallback_character_bible = {}
+            fallback_style_bible = {}
             for scene_number, text in enumerate(texts, start=1):
                 _, _, partial = parse_offline_storyboard_text(text, 1, default_negative)
+                if not fallback_character_bible and partial.get("character_bible"):
+                    fallback_character_bible = partial["character_bible"]
+                if not fallback_style_bible and partial.get("style_bible"):
+                    fallback_style_bible = partial["style_bible"]
                 shot = dict(partial["shots"][0])
                 shot["scene_id"] = scene_number
                 shots.append(shot)
@@ -679,11 +834,22 @@ class RH_OfflineStoryboardParser_Node:
             positive = [shot["prompt"] for shot in shots]
             negative = [shot["negative_prompt"] for shot in shots]
             storyboard = {
-                "title": "",
-                "character_bible": {},
-                "style_bible": {},
+                "title": canonical_outline.get("title", "") if canonical_outline else "",
+                "character_bible": (
+                    canonical_outline.get("character_bible", {})
+                    if canonical_outline
+                    else fallback_character_bible
+                ),
+                "style_bible": (
+                    canonical_outline.get("style_bible", {})
+                    if canonical_outline
+                    else fallback_style_bible
+                ),
                 "shots": shots,
             }
+            if canonical_outline:
+                for index, shot in enumerate(shots):
+                    shot["scene_outline"] = canonical_outline["scenes"][index]
         else:
             positive, negative, storyboard = parse_offline_storyboard_text(
                 first(texts),
@@ -695,8 +861,33 @@ class RH_OfflineStoryboardParser_Node:
             style_bible = {}
             storyboard["style_bible"] = style_bible
         style_bible["aspect_ratio"] = ratio
+        character_bible = storyboard.get("character_bible")
+        if not isinstance(character_bible, dict):
+            character_bible = {}
+            storyboard["character_bible"] = character_bible
+        if canonical_outline and not _bible_anchor(character_bible):
+            raise ValueError("The locked outline does not contain a usable character_bible.")
+
+        locked_positive = []
+        character_anchor = ""
+        style_anchor = ""
+        for shot in storyboard["shots"]:
+            raw_prompt = shot["prompt"]
+            locked, character_anchor, style_anchor = _locked_prompt(
+                raw_prompt,
+                character_bible,
+                style_bible,
+                ratio,
+                language,
+            )
+            shot["raw_prompt"] = raw_prompt
+            shot["prompt"] = locked
+            locked_positive.append(locked)
+        positive = locked_positive
+        storyboard["character_anchor"] = character_anchor
+        storyboard["style_anchor"] = style_anchor
         storyboard["generation_settings"] = {
-            "mode": "offline_qwen",
+            "mode": "offline_qwen_two_pass" if canonical_outline else "offline_qwen",
             "scene_count": requested_count,
             "prompt_language": language,
             "aspect_ratio": ratio,

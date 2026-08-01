@@ -41,13 +41,17 @@ The prompt lists can be connected to text-encoding and image-generation nodes. C
 
 ### RH Storyboard - Offline Qwen Request
 
-Builds a list of strict per-scene requests for ComfyUI's native `TextGenerate` node. It accepts the story, scene count, prompt language and aspect ratio, then returns one Qwen request per scene plus matching settings and dimensions. ComfyUI maps `TextGenerate` across the list, which is more reliable for 4B models than asking for 8–12 complete scenes in one response. This node performs no network request and has no API inputs.
+Builds the first-pass planning request for ComfyUI's native `TextGenerate` node. The model analyzes the reference image once, creates one canonical `character_bible`, and outlines the requested scenes while separating immutable character traits from mutable scene details. This node performs no network request and has no API inputs.
 
 Connect its `qwen_prompt` output to `TextGenerate.prompt`, and connect the same reference image directly to `TextGenerate.image` when using a vision-language model such as Qwen3VL.
 
+### RH Storyboard - Offline Locked Scene Requests
+
+Parses the first-pass outline and creates one second-pass request per scene. Every request receives the exact same character and style locks plus the previous, current and next scene outline. ComfyUI maps a second native `TextGenerate` node across this list.
+
 ### RH Storyboard - Offline Qwen Parser
 
-Collects the per-scene local model responses into ordered `positive_prompts` and `negative_prompts` lists for batch image generation. It also accepts a single multi-scene response for compatibility. Supported formats include strict JSON, Markdown-fenced JSON and numbered prompt lines. JSON scenes may use `prompt`, `positive_prompt`, `image_prompt` or structured visual fields.
+Collects the second-pass local model responses into ordered `positive_prompts` and `negative_prompts` lists for batch image generation. When connected to the locked outline, it programmatically prepends the identical canonical character and style anchors to every final prompt, so a small local model cannot silently omit or rewrite hairstyle, clothing, age or identity between shots. It also accepts the older single-pass format for compatibility.
 
 The parser raises a clear error when the local model returns fewer usable prompts than requested instead of silently producing an empty storyboard. Increase `TextGenerate.max_length` or reduce the scene count if that happens.
 
@@ -112,9 +116,9 @@ After restarting ComfyUI, hard-refresh the browser and search for `RH Storyboard
 - [`workflows/RH_configurable_director_1_to_12_scenes.json`](workflows/RH_configurable_director_1_to_12_scenes.json) adds selectable scene count, prompt language and aspect ratio, with up to twelve independently connectable scene branches.
 - [`workflows/RH_configurable_director_Krea2Image_batch.json`](workflows/RH_configurable_director_Krea2Image_batch.json) maps the generated prompt list through the bundled Krea2Image subgraph definition, exposes `📐 Resolution Master` in the main configuration area for the actual generation width and height, removes the original list-incompatible metadata saver, and saves the resulting storyboard images through an external list-safe `SaveImage` node.
 - [`workflows/RH_configurable_director_Krea2Image_ReActor_batch.json`](workflows/RH_configurable_director_Krea2Image_ReActor_batch.json) keeps the Krea2Image batch workflow and adds an enabled-by-default `ReActorFaceSwap` identity pass. The same uploaded character reference is sent to the director and broadcast as the ReActor source image for every generated storyboard frame. Separate previews show the swapped result, the original Krea image, and the Krea base image. Version 5.3 exports the workflow with ComfyUI schema version `0.4` for frontend link-rendering compatibility and uses the dedicated `30001+` namespace for root links so they cannot collide with links inside the bundled Krea subgraphs.
-- [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json) is the fully offline Qwen3VL workflow. It contains no `RH_CONFIGURABLE_STORYBOARD` API node and replaces generic line splitting with the native offline request/parser nodes. Text previews expose the raw Qwen response, parsed storyboard JSON and final positive-prompt list. The unused rgthree image comparer and root `PreviewImage` nodes are removed, so only the final `SaveImage` writes images and batch runs do not create `rgthree.compare._temp_*` or `ComfyUI_temp_*` asset entries.
+- [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json) is the fully offline Qwen3VL workflow. Its v7.3 revision uses a two-pass local pipeline: Qwen first locks one canonical character bible and scene outline, then writes each shot with that shared context. The parser prepends the same immutable character anchor to every Krea prompt. Text previews expose the plan, per-scene responses, parsed storyboard JSON and final prompt list. Only the final `SaveImage` writes images, so runs do not create rgthree or ComfyUI preview-temp assets.
 
-For a fully offline workflow, use `RH Storyboard - Offline Qwen Request → TextGenerate → RH Storyboard - Offline Qwen Parser`. The local model response is parsed by this package rather than by generic line-splitting nodes, so JSON and numbered output both produce a proper ComfyUI prompt list.
+For a fully offline workflow, use `Offline Qwen Request → TextGenerate (plan) → Offline Locked Scene Requests → TextGenerate (shots) → Offline Qwen Parser`.
 
 Add a new API key locally after importing any workflow; exported workflow files intentionally contain no API key. The Krea2Image workflow also requires the models and custom nodes used by the original Krea2Image blueprint to be installed on the ComfyUI instance.
 
