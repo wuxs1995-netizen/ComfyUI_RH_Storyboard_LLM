@@ -3455,7 +3455,7 @@
       },
       "widgets_values": [
         "",
-        8192,
+        1536,
         "on",
         0.55,
         48,
@@ -3467,7 +3467,7 @@
         false,
         true
       ],
-      "title": "本地 Qwen3VL 文本生成｜返回严格分镜 JSON"
+      "title": "本地 Qwen3VL 逐分镜生成｜每个镜头独立返回 JSON"
     },
     {
       "id": 95,
@@ -3739,11 +3739,12 @@
       ],
       "outputs": [
         {
-          "name": "qwen_prompt",
+          "name": "qwen_prompts",
           "type": "STRING",
           "links": [
             30134
-          ]
+          ],
+          "shape": 6
         },
         {
           "name": "scene_count",

@@ -266,6 +266,23 @@ def _offline_line_prompts(text):
     return prompts
 
 
+def _offline_scene_beat(scene_number, scene_count):
+    if scene_count <= 1:
+        return "Create the story's clearest defining visual moment with a complete beginning-to-end implication."
+    progress = (scene_number - 1) / (scene_count - 1)
+    if scene_number == 1:
+        return "Establish the protagonist, location, time, weather and initial situation."
+    if scene_number == scene_count:
+        return "Show the final decision, consequence or resolution; make it visually distinct from the opening."
+    if progress <= 0.25:
+        return "Show the inciting discovery or first meaningful change; advance beyond the establishing shot."
+    if progress <= 0.5:
+        return "Develop the investigation or journey with a new action, location detail or piece of evidence."
+    if progress <= 0.75:
+        return "Escalate conflict, risk or emotion with a clearly different composition and action."
+    return "Build toward the climax and force the protagonist toward the final choice."
+
+
 def parse_offline_storyboard_text(generated_text, scene_count, default_negative_prompt=""):
     """Normalize Qwen JSON or numbered lines into ordered ComfyUI prompt lists."""
     parsed = _extract_first_json_value(generated_text)
@@ -533,13 +550,14 @@ class RH_OfflineStoryboardRequest_Node:
 
     RETURN_TYPES = ("STRING", "INT", "STRING", "STRING", "INT", "INT")
     RETURN_NAMES = (
-        "qwen_prompt",
+        "qwen_prompts",
         "scene_count",
         "prompt_language",
         "aspect_ratio",
         "width",
         "height",
     )
+    OUTPUT_IS_LIST = (True, False, False, False, False, False)
     FUNCTION = "build_request"
     CATEGORY = "Runninghub/Storyboard/Offline"
 
@@ -556,29 +574,36 @@ class RH_OfflineStoryboardRequest_Node:
             if prompt_language == "中文"
             else "Every prompt value must be written entirely in English."
         )
-        request = f"""{director_instruction.strip()}
+        requests = []
+        for scene_number in range(1, scene_count + 1):
+            beat = _offline_scene_beat(scene_number, scene_count)
+            request = f"""{director_instruction.strip()}
 
 STORY:
 {story.strip()}
 
 SETTINGS:
-- Exact scene count: {scene_count}
+- This request is for scene {scene_number} of {scene_count}.
 - Prompt language: {prompt_language}
 - Aspect ratio: {aspect_ratio}
 
+NARRATIVE FUNCTION FOR THIS SCENE:
+{beat}
+
 REQUIREMENTS:
-1. The scenes array must contain exactly {scene_count} items, numbered from 1 to {scene_count}.
+1. Return exactly one scene object inside the scenes array, with scene_id={scene_number}.
 2. {language_rule}
 3. Every scene.prompt must be a single line with no internal newline.
 4. Every prompt must explicitly preserve the shared character identity and the aspect ratio {aspect_ratio}.
-5. Return only this JSON shape:
+5. Do not summarize the whole story and do not combine multiple shots in one prompt.
+6. Make this scene visually and narratively appropriate for position {scene_number}/{scene_count}.
+7. Return only this JSON shape:
 {{
-  "title": "",
   "character_bible": {{"appearance": "", "clothing": "", "identity": ""}},
   "style_bible": {{"visual_style": "", "color_palette": "", "aspect_ratio": "{aspect_ratio}"}},
   "scenes": [
     {{
-      "scene_id": 1,
+      "scene_id": {scene_number},
       "prompt": "",
       "negative_prompt": "blurry face, deformed anatomy, extra fingers, low quality",
       "camera": "",
@@ -586,8 +611,9 @@ REQUIREMENTS:
     }}
   ]
 }}"""
+            requests.append(request)
         width, height = ASPECT_PRESETS[aspect_ratio]
-        return request, scene_count, prompt_language, aspect_ratio, width, height
+        return requests, scene_count, prompt_language, aspect_ratio, width, height
 
 
 class RH_OfflineStoryboardParser_Node:
@@ -614,6 +640,7 @@ class RH_OfflineStoryboardParser_Node:
     RETURN_TYPES = ("STRING", "STRING", "STRING", "INT")
     RETURN_NAMES = ("positive_prompts", "negative_prompts", "storyboard_json", "scene_count")
     OUTPUT_IS_LIST = (True, True, False, False)
+    INPUT_IS_LIST = True
     FUNCTION = "parse_storyboard"
     CATEGORY = "Runninghub/Storyboard/Offline"
 
@@ -625,23 +652,56 @@ class RH_OfflineStoryboardParser_Node:
         aspect_ratio,
         default_negative_prompt,
     ):
-        positive, negative, storyboard = parse_offline_storyboard_text(
-            generated_text,
-            scene_count,
-            default_negative_prompt.strip(),
-        )
+        def first(value):
+            if isinstance(value, (list, tuple)):
+                return value[0] if value else None
+            return value
+
+        requested_count = int(first(scene_count))
+        language = str(first(prompt_language) or "中文")
+        ratio = str(first(aspect_ratio) or "16:9")
+        default_negative = str(first(default_negative_prompt) or "").strip()
+        texts = list(generated_text) if isinstance(generated_text, (list, tuple)) else [generated_text]
+
+        if len(texts) > 1:
+            shots = []
+            for scene_number, text in enumerate(texts, start=1):
+                _, _, partial = parse_offline_storyboard_text(text, 1, default_negative)
+                shot = dict(partial["shots"][0])
+                shot["scene_id"] = scene_number
+                shots.append(shot)
+            if len(shots) < requested_count:
+                raise ValueError(
+                    f"Local Qwen returned {len(shots)} scene responses; expected {requested_count}. "
+                    "Check the TextGenerate error log and run again."
+                )
+            shots = shots[:requested_count]
+            positive = [shot["prompt"] for shot in shots]
+            negative = [shot["negative_prompt"] for shot in shots]
+            storyboard = {
+                "title": "",
+                "character_bible": {},
+                "style_bible": {},
+                "shots": shots,
+            }
+        else:
+            positive, negative, storyboard = parse_offline_storyboard_text(
+                first(texts),
+                requested_count,
+                default_negative,
+            )
         style_bible = storyboard.get("style_bible")
         if not isinstance(style_bible, dict):
             style_bible = {}
             storyboard["style_bible"] = style_bible
-        style_bible["aspect_ratio"] = aspect_ratio
+        style_bible["aspect_ratio"] = ratio
         storyboard["generation_settings"] = {
             "mode": "offline_qwen",
-            "scene_count": scene_count,
-            "prompt_language": prompt_language,
-            "aspect_ratio": aspect_ratio,
+            "scene_count": requested_count,
+            "prompt_language": language,
+            "aspect_ratio": ratio,
         }
-        return positive, negative, _json_text(storyboard), scene_count
+        return positive, negative, _json_text(storyboard), requested_count
 
 
 class RH_MultiSceneLLM_Node:
