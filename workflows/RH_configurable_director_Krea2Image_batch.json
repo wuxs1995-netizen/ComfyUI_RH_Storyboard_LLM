@@ -1,7 +1,7 @@
 {
   "id": "rh-configurable-director",
   "revision": 0,
-  "last_node_id": 37,
+  "last_node_id": 38,
   "last_link_id": 37,
   "nodes": [
     {
@@ -126,18 +126,12 @@
         {
           "name": "width",
           "type": "INT",
-          "links": [
-            4,
-            33
-          ]
+          "links": null
         },
         {
           "name": "height",
           "type": "INT",
-          "links": [
-            5,
-            34
-          ]
+          "links": null
         }
       ],
       "properties": {
@@ -1552,10 +1546,10 @@
     },
     {
       "id": 34,
-      "type": "a5ae3c2f-a0fd-4c1e-9caf-61b3eac23164",
+      "type": "c2d48169-9122-4c36-8e4b-cf7ae7e8605f",
       "pos": [
         1090,
-        980
+        2060
       ],
       "size": [
         430,
@@ -1670,7 +1664,7 @@
             "sourcePreviewName": "$$canvas-image-preview"
           }
         ],
-        "Node name for S&R": "Krea2Image Storyboard Batch v3"
+        "Node name for S&R": "Krea2Image Storyboard Batch v4"
       },
       "widgets_values": [
         1003949590422403,
@@ -1680,7 +1674,7 @@
         "Krea2_2026-07-18-083247_1003949590422403.png",
         "image"
       ],
-      "title": "Krea2Image｜批量生图 v3（无内部保存器）"
+      "title": "Krea2Image｜批量生图 v4（外置分辨率）"
     },
     {
       "id": 35,
@@ -1688,7 +1682,7 @@
       "title": "Krea2Image 最终分镜图",
       "pos": [
         1570,
-        980
+        2060
       ],
       "size": [
         520,
@@ -1718,7 +1712,7 @@
       "title": "Krea2Image 基础图预览",
       "pos": [
         2140,
-        980
+        2060
       ],
       "size": [
         520,
@@ -1747,7 +1741,7 @@
       "type": "SaveImage",
       "pos": [
         1570,
-        1450
+        2530
       ],
       "size": [
         420,
@@ -1797,6 +1791,136 @@
         "RH_Krea2_Storyboard"
       ],
       "title": "批量保存最终分镜图"
+    },
+    {
+      "id": 38,
+      "type": "ResolutionMaster",
+      "pos": [
+        40,
+        760
+      ],
+      "size": [
+        480,
+        700
+      ],
+      "flags": {},
+      "order": 34,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "resolution",
+          "name": "resolution",
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "width",
+          "name": "width",
+          "type": "INT",
+          "links": [
+            4,
+            33
+          ]
+        },
+        {
+          "localized_name": "height",
+          "name": "height",
+          "type": "INT",
+          "links": [
+            5,
+            34
+          ]
+        },
+        {
+          "localized_name": "resolution_string",
+          "name": "resolution_string",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-resolution-master",
+        "ver": "1.6.0",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        },
+        "Node name for S&R": "ResolutionMaster",
+        "mode": "Manual",
+        "valueX": 1080,
+        "valueY": 1920,
+        "batch_size": 1,
+        "canvas_min_x": 0,
+        "canvas_max_x": 2048,
+        "canvas_step_x": 64,
+        "canvas_min_y": 0,
+        "canvas_max_y": 2048,
+        "canvas_step_y": 64,
+        "canvas_decimals_x": 0,
+        "canvas_decimals_y": 0,
+        "canvas_snap": true,
+        "canvas_dots": true,
+        "canvas_frame": true,
+        "action_slider_snap_min": 16,
+        "action_slider_snap_max": 256,
+        "action_slider_snap_step": 16,
+        "scaling_slider_min": 0.1,
+        "scaling_slider_max": 4,
+        "scaling_slider_step": 0.1,
+        "megapixels_slider_min": 0.5,
+        "megapixels_slider_max": 6,
+        "megapixels_slider_step": 0.1,
+        "snapValue": 64,
+        "upscaleValue": 1,
+        "targetResolution": 1080,
+        "targetMegapixels": 20,
+        "rescaleMode": "resolution",
+        "rescaleValue": 1,
+        "preserveScalingRatio": false,
+        "autoDetect": false,
+        "autoDetectSource": "backend",
+        "autoDetectWidth": 0,
+        "autoDetectHeight": 0,
+        "autoDetectPresetsJSON": "{\"__resolutionMasterConfigVersion\":1,\"__resolutionMasterProfile\":{\"strategy\":\"closest_aspect\",\"options\":{}},\"__resolutionMasterPresets\":{\"Instagram Square\":{\"width\":1080,\"height\":1080,\"isCustom\":false,\"isHidden\":false},\"Instagram Portrait\":{\"width\":1080,\"height\":1350,\"isCustom\":false,\"isHidden\":false},\"Instagram Landscape\":{\"width\":1080,\"height\":566,\"isCustom\":false,\"isHidden\":false},\"Instagram Stories/Reels\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"Instagram Profile\":{\"width\":320,\"height\":320,\"isCustom\":false,\"isHidden\":false},\"Facebook Post\":{\"width\":1200,\"height\":630,\"isCustom\":false,\"isHidden\":false},\"Facebook Cover Page\":{\"width\":820,\"height\":312,\"isCustom\":false,\"isHidden\":false},\"Facebook Cover Event\":{\"width\":1920,\"height\":1005,\"isCustom\":false,\"isHidden\":false},\"Facebook Personal Cover\":{\"width\":1200,\"height\":445,\"isCustom\":false,\"isHidden\":false},\"Facebook Profile\":{\"width\":180,\"height\":180,\"isCustom\":false,\"isHidden\":false},\"Facebook Stories\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"Twitter Post\":{\"width\":1200,\"height\":675,\"isCustom\":false,\"isHidden\":false},\"Twitter Header\":{\"width\":1500,\"height\":500,\"isCustom\":false,\"isHidden\":false},\"Twitter Profile\":{\"width\":400,\"height\":400,\"isCustom\":false,\"isHidden\":false},\"YouTube Thumbnail\":{\"width\":1280,\"height\":720,\"isCustom\":false,\"isHidden\":false},\"YouTube Banner\":{\"width\":2560,\"height\":1440,\"isCustom\":false,\"isHidden\":false},\"YouTube Channel Icon\":{\"width\":800,\"height\":800,\"isCustom\":false,\"isHidden\":false},\"YouTube Shorts\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"LinkedIn Post\":{\"width\":1200,\"height\":627,\"isCustom\":false,\"isHidden\":false},\"LinkedIn Cover Profile\":{\"width\":1584,\"height\":396,\"isCustom\":false,\"isHidden\":false},\"LinkedIn Company Logo\":{\"width\":300,\"height\":300,\"isCustom\":false,\"isHidden\":false},\"LinkedIn Company Background\":{\"width\":1128,\"height\":191,\"isCustom\":false,\"isHidden\":false},\"TikTok Video\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"TikTok Profile\":{\"width\":200,\"height\":200,\"isCustom\":false,\"isHidden\":false},\"Pinterest Standard Pin\":{\"width\":1000,\"height\":1500,\"isCustom\":false,\"isHidden\":false},\"Pinterest Max Pin\":{\"width\":1000,\"height\":2100,\"isCustom\":false,\"isHidden\":false},\"Pinterest Profile\":{\"width\":165,\"height\":165,\"isCustom\":false,\"isHidden\":false},\"Pinterest Board Cover\":{\"width\":222,\"height\":150,\"isCustom\":false,\"isHidden\":false},\"Snapchat Story/Ads\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"Snapchat Profile\":{\"width\":1080,\"height\":1080,\"isCustom\":false,\"isHidden\":false}}}",
+        "autoFitOnChange": false,
+        "autoResizeOnChange": false,
+        "autoSnapOnChange": false,
+        "smartFit": false,
+        "selectedCategory": "Social Media",
+        "selectedPreset": "YouTube Thumbnail",
+        "useCustomCalc": false,
+        "showCalcInfo": false,
+        "manual_slider_min_w": 64,
+        "manual_slider_max_w": 2048,
+        "manual_slider_step_w": 64,
+        "manual_slider_min_h": 64,
+        "manual_slider_max_h": 2048,
+        "manual_slider_step_h": 64,
+        "section_actions_collapsed": false,
+        "section_scaling_collapsed": false,
+        "section_autoDetect_collapsed": false,
+        "section_presets_collapsed": false,
+        "section_extraControls_collapsed": false,
+        "preferred_compact_height": null,
+        "preferred_expanded_height": 715,
+        "dropdown_resolution_expanded": false,
+        "dropdown_category_expanded": false,
+        "dropdown_preset_expanded": false,
+        "preset_selector_mode": "visual",
+        "customPresetsJSON": ""
+      },
+      "widgets_values": [
+        "2K (1080p)_landscape"
+      ],
+      "color": "#432",
+      "bgcolor": "#653",
+      "title": "📐 Resolution Master｜Krea2Image 实际生图尺寸"
     }
   ],
   "links": [
@@ -1826,16 +1950,16 @@
     ],
     [
       4,
-      2,
-      7,
+      38,
+      0,
       5,
       0,
       "INT"
     ],
     [
       5,
-      2,
-      8,
+      38,
+      1,
       6,
       0,
       "INT"
@@ -2042,16 +2166,16 @@
     ],
     [
       33,
-      2,
-      7,
+      38,
+      0,
       34,
       8,
       "INT"
     ],
     [
       34,
-      2,
-      8,
+      38,
+      1,
       34,
       9,
       "INT"
@@ -2084,12 +2208,12 @@
   "groups": [
     {
       "id": 1,
-      "title": "配置区：分镜数量 1-12 / 提示词语言 / 横宽比",
+      "title": "配置区：导演宽高比控制提示词；Resolution Master 控制实际生图尺寸",
       "bounding": [
         20,
         -20,
         1730,
-        940
+        1500
       ],
       "color": "#6f46c1",
       "flags": {}
@@ -2240,10 +2364,10 @@
     },
     {
       "id": 30,
-      "title": "Krea2Image 批量生图 v3：内部元数据保存器已彻底移除",
+      "title": "Krea2Image 批量生图 v4：分辨率由外部配置区控制",
       "bounding": [
         1060,
-        920,
+        2000,
         1640,
         800
       ],
@@ -2260,13 +2384,13 @@
         100
       ]
     },
-    "rh_workflow_version": "krea2image-batch-v3-no-internal-saver"
+    "rh_workflow_version": "krea2image-batch-v4-external-resolution-master"
   },
   "version": 0.4,
   "definitions": {
     "subgraphs": [
       {
-        "id": "a5ae3c2f-a0fd-4c1e-9caf-61b3eac23164",
+        "id": "c2d48169-9122-4c36-8e4b-cf7ae7e8605f",
         "version": 1,
         "state": {
           "lastGroupId": 18,
@@ -2276,7 +2400,7 @@
         },
         "revision": 0,
         "config": {},
-        "name": "Krea2Image Storyboard Batch v3",
+        "name": "Krea2Image Storyboard Batch v4",
         "inputNode": {
           "id": -10,
           "bounding": [
@@ -2894,144 +3018,6 @@
             ],
             "color": "#223",
             "bgcolor": "#335"
-          },
-          {
-            "id": 33,
-            "type": "Any Switch (rgthree)",
-            "pos": [
-              3019.60832914966,
-              -1258.5498839834368
-            ],
-            "size": [
-              175.8189453125,
-              106
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 73,
-            "mode": 0,
-            "inputs": [
-              {
-                "dir": 3,
-                "name": "any_01",
-                "type": "STRING",
-                "link": 29
-              },
-              {
-                "dir": 3,
-                "name": "any_02",
-                "type": "STRING",
-                "link": 8
-              },
-              {
-                "dir": 3,
-                "name": "any_03",
-                "type": "STRING",
-                "link": null
-              },
-              {
-                "dir": 3,
-                "name": "any_04",
-                "type": "STRING",
-                "link": null
-              },
-              {
-                "name": "any_05",
-                "type": "STRING",
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "dir": 4,
-                "label": "STRING",
-                "name": "*",
-                "shape": 3,
-                "type": "STRING",
-                "links": []
-              }
-            ],
-            "properties": {
-              "cnr_id": "rgthree-comfy",
-              "ver": "1.0.2606200020",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.8"
-              },
-              "aux_id": "rgthree/rgthree-comfy"
-            },
-            "widgets_values": []
-          },
-          {
-            "id": 34,
-            "type": "Any Switch (rgthree)",
-            "pos": [
-              3020.1295354329036,
-              -1202.0437562407194
-            ],
-            "size": [
-              175.8189453125,
-              106
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 74,
-            "mode": 0,
-            "inputs": [
-              {
-                "dir": 3,
-                "name": "any_01",
-                "type": "IMAGE",
-                "link": 30
-              },
-              {
-                "dir": 3,
-                "name": "any_02",
-                "type": "IMAGE",
-                "link": 6
-              },
-              {
-                "dir": 3,
-                "name": "any_03",
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "dir": 3,
-                "name": "any_04",
-                "type": "IMAGE",
-                "link": null
-              },
-              {
-                "name": "any_05",
-                "type": "IMAGE",
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "dir": 4,
-                "label": "IMAGE",
-                "name": "*",
-                "shape": 3,
-                "type": "IMAGE",
-                "links": []
-              }
-            ],
-            "properties": {
-              "cnr_id": "rgthree-comfy",
-              "ver": "1.0.2606200020",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.8"
-              },
-              "aux_id": "rgthree/rgthree-comfy"
-            },
-            "widgets_values": []
           },
           {
             "id": 35,
@@ -6430,75 +6416,6 @@
             "bgcolor": "#653"
           },
           {
-            "id": 188,
-            "type": "d5c145cd-ada3-4d62-9080-bee3be841fc8",
-            "pos": [
-              2761.7343627606397,
-              -1363.6228634394581
-            ],
-            "size": [
-              210,
-              102
-            ],
-            "flags": {},
-            "order": 56,
-            "mode": 4,
-            "inputs": [
-              {
-                "label": "resolution",
-                "name": "choice",
-                "type": "COMBO",
-                "widget": {
-                  "name": "choice"
-                },
-                "link": null
-              },
-              {
-                "label": "Orientation",
-                "name": "choice_1",
-                "type": "COMBO",
-                "widget": {
-                  "name": "choice_1"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "width",
-                "name": "width",
-                "type": "INT",
-                "links": [
-                  29
-                ]
-              },
-              {
-                "localized_name": "height",
-                "name": "height",
-                "type": "INT",
-                "links": [
-                  30
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.26.0",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.8"
-              },
-              "previewExposures": []
-            },
-            "widgets_values": [
-              "1080p",
-              "Landscape"
-            ],
-            "color": "#432",
-            "bgcolor": "#653"
-          },
-          {
             "id": 63,
             "type": "easy globalSeed",
             "pos": [
@@ -7470,146 +7387,6 @@
             "bgcolor": "#535"
           },
           {
-            "id": 195,
-            "type": "ResolutionMaster",
-            "pos": [
-              2642.29072310898,
-              -1173.9757494216103
-            ],
-            "size": [
-              330,
-              715
-            ],
-            "flags": {},
-            "order": 66,
-            "mode": 0,
-            "inputs": [
-              {
-                "label": "input_image",
-                "localized_name": "input_image",
-                "name": "input_image",
-                "type": "COMBO",
-                "widget": {
-                  "name": "resolution"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "",
-                "name": "",
-                "type": "INT",
-                "links": [
-                  8
-                ]
-              },
-              {
-                "localized_name": "",
-                "name": "",
-                "type": "INT",
-                "links": [
-                  6
-                ]
-              },
-              {
-                "localized_name": "",
-                "name": "",
-                "type": "STRING",
-                "links": null
-              },
-              {
-                "localized_name": "",
-                "name": "",
-                "type": "INT",
-                "links": null
-              },
-              {
-                "localized_name": "",
-                "name": "",
-                "type": "LATENT",
-                "links": null
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfyui-resolution-master",
-              "ver": "1.6.0",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.8"
-              },
-              "Node name for S&R": "ResolutionMaster",
-              "mode": "Manual",
-              "valueX": 1080,
-              "valueY": 1920,
-              "batch_size": 1,
-              "canvas_min_x": 0,
-              "canvas_max_x": 2048,
-              "canvas_step_x": 64,
-              "canvas_min_y": 0,
-              "canvas_max_y": 2048,
-              "canvas_step_y": 64,
-              "canvas_decimals_x": 0,
-              "canvas_decimals_y": 0,
-              "canvas_snap": true,
-              "canvas_dots": true,
-              "canvas_frame": true,
-              "action_slider_snap_min": 16,
-              "action_slider_snap_max": 256,
-              "action_slider_snap_step": 16,
-              "scaling_slider_min": 0.1,
-              "scaling_slider_max": 4,
-              "scaling_slider_step": 0.1,
-              "megapixels_slider_min": 0.5,
-              "megapixels_slider_max": 6,
-              "megapixels_slider_step": 0.1,
-              "snapValue": 64,
-              "upscaleValue": 1,
-              "targetResolution": 1080,
-              "targetMegapixels": 20,
-              "rescaleMode": "resolution",
-              "rescaleValue": 1,
-              "preserveScalingRatio": false,
-              "autoDetect": false,
-              "autoDetectSource": "backend",
-              "autoDetectWidth": 0,
-              "autoDetectHeight": 0,
-              "autoDetectPresetsJSON": "{\"__resolutionMasterConfigVersion\":1,\"__resolutionMasterProfile\":{\"strategy\":\"closest_aspect\",\"options\":{}},\"__resolutionMasterPresets\":{\"Instagram Square\":{\"width\":1080,\"height\":1080,\"isCustom\":false,\"isHidden\":false},\"Instagram Portrait\":{\"width\":1080,\"height\":1350,\"isCustom\":false,\"isHidden\":false},\"Instagram Landscape\":{\"width\":1080,\"height\":566,\"isCustom\":false,\"isHidden\":false},\"Instagram Stories/Reels\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"Instagram Profile\":{\"width\":320,\"height\":320,\"isCustom\":false,\"isHidden\":false},\"Facebook Post\":{\"width\":1200,\"height\":630,\"isCustom\":false,\"isHidden\":false},\"Facebook Cover Page\":{\"width\":820,\"height\":312,\"isCustom\":false,\"isHidden\":false},\"Facebook Cover Event\":{\"width\":1920,\"height\":1005,\"isCustom\":false,\"isHidden\":false},\"Facebook Personal Cover\":{\"width\":1200,\"height\":445,\"isCustom\":false,\"isHidden\":false},\"Facebook Profile\":{\"width\":180,\"height\":180,\"isCustom\":false,\"isHidden\":false},\"Facebook Stories\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"Twitter Post\":{\"width\":1200,\"height\":675,\"isCustom\":false,\"isHidden\":false},\"Twitter Header\":{\"width\":1500,\"height\":500,\"isCustom\":false,\"isHidden\":false},\"Twitter Profile\":{\"width\":400,\"height\":400,\"isCustom\":false,\"isHidden\":false},\"YouTube Thumbnail\":{\"width\":1280,\"height\":720,\"isCustom\":false,\"isHidden\":false},\"YouTube Banner\":{\"width\":2560,\"height\":1440,\"isCustom\":false,\"isHidden\":false},\"YouTube Channel Icon\":{\"width\":800,\"height\":800,\"isCustom\":false,\"isHidden\":false},\"YouTube Shorts\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"LinkedIn Post\":{\"width\":1200,\"height\":627,\"isCustom\":false,\"isHidden\":false},\"LinkedIn Cover Profile\":{\"width\":1584,\"height\":396,\"isCustom\":false,\"isHidden\":false},\"LinkedIn Company Logo\":{\"width\":300,\"height\":300,\"isCustom\":false,\"isHidden\":false},\"LinkedIn Company Background\":{\"width\":1128,\"height\":191,\"isCustom\":false,\"isHidden\":false},\"TikTok Video\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"TikTok Profile\":{\"width\":200,\"height\":200,\"isCustom\":false,\"isHidden\":false},\"Pinterest Standard Pin\":{\"width\":1000,\"height\":1500,\"isCustom\":false,\"isHidden\":false},\"Pinterest Max Pin\":{\"width\":1000,\"height\":2100,\"isCustom\":false,\"isHidden\":false},\"Pinterest Profile\":{\"width\":165,\"height\":165,\"isCustom\":false,\"isHidden\":false},\"Pinterest Board Cover\":{\"width\":222,\"height\":150,\"isCustom\":false,\"isHidden\":false},\"Snapchat Story/Ads\":{\"width\":1080,\"height\":1920,\"isCustom\":false,\"isHidden\":false},\"Snapchat Profile\":{\"width\":1080,\"height\":1080,\"isCustom\":false,\"isHidden\":false}}}",
-              "autoFitOnChange": false,
-              "autoResizeOnChange": false,
-              "autoSnapOnChange": false,
-              "smartFit": false,
-              "selectedCategory": "Social Media",
-              "selectedPreset": "YouTube Thumbnail",
-              "useCustomCalc": false,
-              "showCalcInfo": false,
-              "manual_slider_min_w": 64,
-              "manual_slider_max_w": 2048,
-              "manual_slider_step_w": 64,
-              "manual_slider_min_h": 64,
-              "manual_slider_max_h": 2048,
-              "manual_slider_step_h": 64,
-              "section_actions_collapsed": false,
-              "section_scaling_collapsed": false,
-              "section_autoDetect_collapsed": false,
-              "section_presets_collapsed": false,
-              "section_extraControls_collapsed": false,
-              "preferred_compact_height": null,
-              "preferred_expanded_height": 715,
-              "dropdown_resolution_expanded": false,
-              "dropdown_category_expanded": false,
-              "dropdown_preset_expanded": false,
-              "preset_selector_mode": "visual",
-              "customPresetsJSON": ""
-            },
-            "widgets_values": [
-              "2K (1080p)_square"
-            ],
-            "color": "#432",
-            "bgcolor": "#653"
-          },
-          {
             "id": 196,
             "type": "Power Lora Loader (rgthree)",
             "pos": [
@@ -7955,38 +7732,6 @@
             "target_id": 31,
             "target_slot": 0,
             "type": "MODEL"
-          },
-          {
-            "id": 29,
-            "origin_id": 188,
-            "origin_slot": 0,
-            "target_id": 33,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
-            "id": 8,
-            "origin_id": 195,
-            "origin_slot": 0,
-            "target_id": 33,
-            "target_slot": 1,
-            "type": "INT"
-          },
-          {
-            "id": 30,
-            "origin_id": 188,
-            "origin_slot": 1,
-            "target_id": 34,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
-            "id": 6,
-            "origin_id": 195,
-            "origin_slot": 1,
-            "target_id": 34,
-            "target_slot": 1,
-            "type": "INT"
           },
           {
             "id": 31,
@@ -9773,845 +9518,6 @@
             "origin_id": -10,
             "origin_slot": 1,
             "target_id": 107,
-            "target_slot": 0,
-            "type": "COMBO"
-          }
-        ],
-        "extra": {
-          "ue_links": [],
-          "links_added_by_ue": []
-        }
-      },
-      {
-        "id": "d5c145cd-ada3-4d62-9080-bee3be841fc8",
-        "version": 1,
-        "state": {
-          "lastGroupId": 18,
-          "lastNodeId": 1380,
-          "lastLinkId": 15178,
-          "lastRerouteId": 0
-        },
-        "revision": 0,
-        "config": {},
-        "name": "New Subgraph",
-        "inputNode": {
-          "id": -10,
-          "bounding": [
-            2611.5230415334754,
-            -637.3172674558984,
-            128,
-            48
-          ]
-        },
-        "outputNode": {
-          "id": -20,
-          "bounding": [
-            4238.2728076171115,
-            -657.3172674558984,
-            128,
-            88
-          ]
-        },
-        "inputs": [
-          {
-            "id": "e5264397-619e-4617-92c7-cdfa21c3cef7",
-            "name": "choice",
-            "type": "COMBO",
-            "linkIds": [
-              15120
-            ],
-            "label": "resolution",
-            "pos": [
-              0,
-              0
-            ]
-          },
-          {
-            "id": "d96d9645-20bd-41aa-bd69-0b4de11751e3",
-            "name": "choice_1",
-            "type": "COMBO",
-            "linkIds": [
-              15121
-            ],
-            "label": "Orientation",
-            "pos": [
-              0,
-              0
-            ]
-          }
-        ],
-        "outputs": [
-          {
-            "id": "9574f711-ba04-4862-a6ce-13d4737f1899",
-            "name": "width",
-            "type": "INT",
-            "linkIds": [
-              26
-            ],
-            "localized_name": "width",
-            "pos": [
-              4262.2728076171115,
-              -633.3172674558984
-            ]
-          },
-          {
-            "id": "22ba4852-d55f-43b7-a878-7853a7c2adde",
-            "name": "height",
-            "type": "INT",
-            "linkIds": [
-              27
-            ],
-            "localized_name": "height",
-            "pos": [
-              4262.2728076171115,
-              -613.3172674558984
-            ]
-          }
-        ],
-        "widgets": [],
-        "nodes": [
-          {
-            "id": 197,
-            "type": "easy indexAnything",
-            "pos": [
-              3141.790954238657,
-              -795.1617232926004
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {},
-            "order": 3,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "输入任何",
-                "name": "any",
-                "type": "*",
-                "link": 14
-              },
-              {
-                "localized_name": "索引",
-                "name": "index",
-                "type": "INT",
-                "widget": {
-                  "name": "index"
-                },
-                "link": 15
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "输出",
-                "name": "out",
-                "type": "*",
-                "links": [
-                  18
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfyui-easy-use",
-              "ver": "1.3.6",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "Node name for S&R": "easy indexAnything"
-            },
-            "widgets_values": [
-              0
-            ]
-          },
-          {
-            "id": 198,
-            "type": "easy indexAnything",
-            "pos": [
-              3145.7484116218807,
-              -452.9681088817691
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {},
-            "order": 4,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "输入任何",
-                "name": "any",
-                "type": "*",
-                "link": 16
-              },
-              {
-                "localized_name": "索引",
-                "name": "index",
-                "type": "INT",
-                "widget": {
-                  "name": "index"
-                },
-                "link": 17
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "输出",
-                "name": "out",
-                "type": "*",
-                "links": [
-                  19
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfyui-easy-use",
-              "ver": "1.3.6",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "Node name for S&R": "easy indexAnything"
-            },
-            "widgets_values": [
-              0
-            ]
-          },
-          {
-            "id": 199,
-            "type": "EmptyImage",
-            "pos": [
-              3372.2749822531987,
-              -665.5304334494471
-            ],
-            "size": [
-              210,
-              130
-            ],
-            "flags": {},
-            "order": 5,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "宽度",
-                "name": "width",
-                "type": "INT",
-                "widget": {
-                  "name": "width"
-                },
-                "link": 18
-              },
-              {
-                "localized_name": "高度",
-                "name": "height",
-                "type": "INT",
-                "widget": {
-                  "name": "height"
-                },
-                "link": 19
-              },
-              {
-                "localized_name": "批量大小",
-                "name": "batch_size",
-                "type": "INT",
-                "widget": {
-                  "name": "batch_size"
-                },
-                "link": null
-              },
-              {
-                "localized_name": "颜色",
-                "name": "color",
-                "type": "INT",
-                "widget": {
-                  "name": "color"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "图像",
-                "name": "IMAGE",
-                "type": "IMAGE",
-                "links": [
-                  20,
-                  22
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.17.0",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "Node name for S&R": "EmptyImage"
-            },
-            "widgets_values": [
-              512,
-              512,
-              1,
-              0
-            ]
-          },
-          {
-            "id": 200,
-            "type": "Note",
-            "pos": [
-              3132.565325567432,
-              -635.7086593166717
-            ],
-            "size": [
-              210,
-              88
-            ],
-            "flags": {},
-            "order": 0,
-            "mode": 4,
-            "inputs": [],
-            "outputs": [],
-            "properties": {
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "848x480\n1280x720\n1920x1088\n"
-            ],
-            "color": "#432",
-            "bgcolor": "#653"
-          },
-          {
-            "id": 201,
-            "type": "easy stringToIntList",
-            "pos": [
-              2839.4135661175924,
-              -858.3743706610514
-            ],
-            "size": [
-              254.01812816251777,
-              88
-            ],
-            "flags": {},
-            "order": 1,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "string",
-                "name": "string",
-                "type": "STRING",
-                "widget": {
-                  "name": "string"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "整数",
-                "name": "INT",
-                "type": "INT",
-                "links": [
-                  14
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfyui-easy-use",
-              "ver": "1.3.6",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "Node name for S&R": "easy stringToIntList"
-            },
-            "widgets_values": [
-              "640, 848, 1280, 1920, 2560, 3840"
-            ]
-          },
-          {
-            "id": 202,
-            "type": "easy stringToIntList",
-            "pos": [
-              2834.339363876681,
-              -426.26016425074556
-            ],
-            "size": [
-              256.06548296077426,
-              88
-            ],
-            "flags": {},
-            "order": 2,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "string",
-                "name": "string",
-                "type": "STRING",
-                "widget": {
-                  "name": "string"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "整数",
-                "name": "INT",
-                "type": "INT",
-                "links": [
-                  16
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfyui-easy-use",
-              "ver": "1.3.6",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "Node name for S&R": "easy stringToIntList"
-            },
-            "widgets_values": [
-              "360, 480, 720, 1088, 1440, 2160"
-            ]
-          },
-          {
-            "id": 203,
-            "type": "ImageRotate",
-            "pos": [
-              3596.365935918305,
-              -662.460694358137
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {},
-            "order": 6,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "图像",
-                "name": "image",
-                "type": "IMAGE",
-                "link": 20
-              },
-              {
-                "localized_name": "旋转",
-                "name": "rotation",
-                "type": "COMBO",
-                "widget": {
-                  "name": "rotation"
-                },
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "图像",
-                "name": "IMAGE",
-                "type": "IMAGE",
-                "links": [
-                  21
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.17.0",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "Node name for S&R": "ImageRotate"
-            },
-            "widgets_values": [
-              "90 degrees"
-            ]
-          },
-          {
-            "id": 204,
-            "type": "easy anythingIndexSwitch",
-            "pos": [
-              3816.3647336520103,
-              -659.3293753621714
-            ],
-            "size": [
-              210,
-              98
-            ],
-            "flags": {},
-            "order": 7,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "值0",
-                "name": "value0",
-                "shape": 7,
-                "type": "*",
-                "link": 21
-              },
-              {
-                "localized_name": "值1",
-                "name": "value1",
-                "shape": 7,
-                "type": "*",
-                "link": 22
-              },
-              {
-                "localized_name": "编号",
-                "name": "index",
-                "type": "INT",
-                "widget": {
-                  "name": "index"
-                },
-                "link": 23
-              },
-              {
-                "name": "value2",
-                "type": "*",
-                "link": null
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "值",
-                "name": "value",
-                "type": "*",
-                "links": [
-                  25
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfyui-easy-use",
-              "ver": "1.3.6",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.8"
-              },
-              "Node name for S&R": "easy anythingIndexSwitch"
-            },
-            "widgets_values": [
-              0
-            ]
-          },
-          {
-            "id": 205,
-            "type": "CustomCombo",
-            "pos": [
-              2799.5230415334754,
-              -723.725329855963
-            ],
-            "size": [
-              296.7634671766018,
-              246
-            ],
-            "flags": {},
-            "order": 8,
-            "mode": 4,
-            "inputs": [
-              {
-                "label": "resolution",
-                "localized_name": "选择",
-                "name": "choice",
-                "type": "COMBO",
-                "widget": {
-                  "name": "choice"
-                },
-                "link": 15120
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "字符串",
-                "name": "STRING",
-                "type": "STRING",
-                "links": []
-              },
-              {
-                "localized_name": "索引",
-                "name": "INDEX",
-                "type": "INT",
-                "links": [
-                  15,
-                  17
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.17.0",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "Node name for S&R": "CustomCombo"
-            },
-            "widgets_values": [
-              "1080p",
-              3,
-              "360p",
-              "480p",
-              "720p",
-              "1080p",
-              "1440p",
-              "4k",
-              ""
-            ]
-          },
-          {
-            "id": 206,
-            "type": "CustomCombo",
-            "pos": [
-              3371.859304030412,
-              -489.7964353436131
-            ],
-            "size": [
-              210,
-              150
-            ],
-            "flags": {},
-            "order": 9,
-            "mode": 4,
-            "inputs": [
-              {
-                "label": "Orientation",
-                "localized_name": "选择",
-                "name": "choice",
-                "type": "COMBO",
-                "widget": {
-                  "name": "choice"
-                },
-                "link": 15121
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "字符串",
-                "name": "STRING",
-                "type": "STRING",
-                "links": []
-              },
-              {
-                "localized_name": "索引",
-                "name": "INDEX",
-                "type": "INT",
-                "links": [
-                  23
-                ]
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.17.0",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.5.2"
-              },
-              "Node name for S&R": "CustomCombo"
-            },
-            "widgets_values": [
-              "Landscape",
-              1,
-              "Portrait",
-              "Landscape",
-              ""
-            ]
-          },
-          {
-            "id": 207,
-            "type": "GetImageSize",
-            "pos": [
-              4038.272807617111,
-              -654.7986452332609
-            ],
-            "size": [
-              140,
-              66
-            ],
-            "flags": {},
-            "order": 10,
-            "mode": 4,
-            "inputs": [
-              {
-                "localized_name": "图像",
-                "name": "image",
-                "type": "IMAGE",
-                "link": 25
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "宽度",
-                "name": "width",
-                "type": "INT",
-                "links": [
-                  26
-                ]
-              },
-              {
-                "localized_name": "高度",
-                "name": "height",
-                "type": "INT",
-                "links": [
-                  27
-                ]
-              },
-              {
-                "localized_name": "批处理大小",
-                "name": "batch_size",
-                "type": "INT",
-                "links": null
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfy-core",
-              "ver": "0.26.0",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.8"
-              },
-              "Node name for S&R": "GetImageSize"
-            }
-          }
-        ],
-        "groups": [],
-        "links": [
-          {
-            "id": 14,
-            "origin_id": 201,
-            "origin_slot": 0,
-            "target_id": 197,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
-            "id": 15,
-            "origin_id": 205,
-            "origin_slot": 1,
-            "target_id": 197,
-            "target_slot": 1,
-            "type": "INT"
-          },
-          {
-            "id": 16,
-            "origin_id": 202,
-            "origin_slot": 0,
-            "target_id": 198,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
-            "id": 17,
-            "origin_id": 205,
-            "origin_slot": 1,
-            "target_id": 198,
-            "target_slot": 1,
-            "type": "INT"
-          },
-          {
-            "id": 18,
-            "origin_id": 197,
-            "origin_slot": 0,
-            "target_id": 199,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
-            "id": 19,
-            "origin_id": 198,
-            "origin_slot": 0,
-            "target_id": 199,
-            "target_slot": 1,
-            "type": "INT"
-          },
-          {
-            "id": 20,
-            "origin_id": 199,
-            "origin_slot": 0,
-            "target_id": 203,
-            "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
-            "id": 21,
-            "origin_id": 203,
-            "origin_slot": 0,
-            "target_id": 204,
-            "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
-            "id": 22,
-            "origin_id": 199,
-            "origin_slot": 0,
-            "target_id": 204,
-            "target_slot": 1,
-            "type": "IMAGE"
-          },
-          {
-            "id": 23,
-            "origin_id": 206,
-            "origin_slot": 1,
-            "target_id": 204,
-            "target_slot": 2,
-            "type": "INT"
-          },
-          {
-            "id": 25,
-            "origin_id": 204,
-            "origin_slot": 0,
-            "target_id": 207,
-            "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
-            "id": 26,
-            "origin_id": 207,
-            "origin_slot": 0,
-            "target_id": -20,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
-            "id": 27,
-            "origin_id": 207,
-            "origin_slot": 1,
-            "target_id": -20,
-            "target_slot": 1,
-            "type": "INT"
-          },
-          {
-            "id": 15120,
-            "origin_id": -10,
-            "origin_slot": 0,
-            "target_id": 205,
-            "target_slot": 0,
-            "type": "COMBO"
-          },
-          {
-            "id": 15121,
-            "origin_id": -10,
-            "origin_slot": 1,
-            "target_id": 206,
             "target_slot": 0,
             "type": "COMBO"
           }
