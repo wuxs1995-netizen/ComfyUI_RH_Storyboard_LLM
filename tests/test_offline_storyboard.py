@@ -122,6 +122,16 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         ]
         self.assertEqual(comparer_nodes, [])
 
+    def test_bundled_workflow_has_no_temp_image_preview_nodes(self):
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json"
+        )
+        workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+        self.assertFalse(any(node.get("type") == "PreviewImage" for node in workflow["nodes"]))
+        self.assertTrue(any(node.get("type") == "SaveImage" for node in workflow["nodes"]))
+
 
 if __name__ == "__main__":
     unittest.main()

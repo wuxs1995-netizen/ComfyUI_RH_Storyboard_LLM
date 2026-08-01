@@ -1,6 +1,6 @@
 {
   "id": "rh-krea2-offline-qwen3vl-native-parser-v70",
-  "revision": 13,
+  "revision": 14,
   "last_node_id": 102,
   "last_link_id": 30142,
   "nodes": [
@@ -219,9 +219,7 @@
         {
           "name": "IMAGE_1",
           "type": "IMAGE",
-          "links": [
-            30034
-          ]
+          "links": []
         }
       ],
       "properties": {
@@ -250,36 +248,6 @@
         "image"
       ],
       "title": "Krea2Image｜原生离线 Qwen 分镜批量生图"
-    },
-    {
-      "id": 36,
-      "type": "PreviewImage",
-      "title": "Krea2Image 基础图预览",
-      "pos": [
-        2550,
-        2060
-      ],
-      "size": [
-        520,
-        430
-      ],
-      "flags": {},
-      "order": 34,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 30034
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.29.2",
-        "Node name for S&R": "PreviewImage"
-      },
-      "widgets_values": []
     },
     {
       "id": 38,
@@ -3044,58 +3012,6 @@
       "title": "恢复到 Krea 原始分镜尺寸"
     },
     {
-      "id": 79,
-      "type": "PreviewImage",
-      "pos": [
-        4690,
-        3160
-      ],
-      "size": [
-        560,
-        430
-      ],
-      "flags": {
-        "pinned": true
-      },
-      "order": 79,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 30128
-        }
-      ],
-      "outputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "links": []
-        }
-      ],
-      "title": "最终图片预览｜自动跟随换脸启停",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.20.1",
-        "Node name for S&R": "PreviewImage",
-        "enableTabs": false,
-        "tabWidth": 65,
-        "tabXOffset": 10,
-        "hasSecondTab": false,
-        "secondTabText": "Send Back",
-        "secondTabOffset": 80,
-        "secondTabWidth": 65,
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        }
-      },
-      "widgets_values": [],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
       "id": 80,
       "type": "SaveImage",
       "pos": [
@@ -3664,7 +3580,6 @@
           "name": "output",
           "type": "*",
           "links": [
-            30128,
             30129
           ]
         }
@@ -3997,14 +3912,6 @@
       34,
       9,
       "INT"
-    ],
-    [
-      30034,
-      34,
-      1,
-      36,
-      0,
-      "IMAGE"
     ],
     [
       30036,
@@ -4511,14 +4418,6 @@
       "IMAGE"
     ],
     [
-      30128,
-      98,
-      0,
-      79,
-      0,
-      "IMAGE"
-    ],
-    [
       30129,
       98,
       0,
@@ -4674,7 +4573,7 @@
         60
       ]
     },
-    "rh_workflow_version": "krea2image-batch-v7.1-offline-no-rgthree-temp",
+    "rh_workflow_version": "krea2image-batch-v7.2-offline-no-temp-previews",
     "rh_root_link_namespace": "300xx-rebuilt",
     "ue_links": [],
     "links_added_by_ue": [],
@@ -4744,7 +4643,22 @@
             137
           ]
         }
-      ]
+      ],
+      "removed_root_preview_nodes": {
+        "node_ids": [
+          36,
+          79
+        ],
+        "link_ids": [
+          30034,
+          30128
+        ],
+        "titles": [
+          "Krea2Image 基础图预览",
+          "最终图片预览｜自动跟随换脸启停"
+        ]
+      },
+      "final_image_ui": "SaveImage node 80 only; prevents ComfyUI_temp_* preview assets"
     }
   },
   "version": 0.4,
