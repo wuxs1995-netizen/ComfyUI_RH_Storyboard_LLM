@@ -293,11 +293,11 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertFalse(any(node.get("type") == "PreviewImage" for node in workflow["nodes"]))
         self.assertTrue(any(node.get("type") == "RH_STORYBOARD_SCENE_SAVE" for node in workflow["nodes"]))
 
-    def test_optional_i2v_workflow_is_bypassed_and_has_no_temp_outputs(self):
+    def test_optional_i2v_workflow_uses_resolution_master_and_has_no_temp_outputs(self):
         workflow_path = (
             Path(__file__).resolve().parents[1]
             / "workflows"
-            / "RH_Krea2_Offline_Qwen3VL_KleinSwap_10ErosI2V_batch_v8.0_optional_video.json"
+            / "RH_Krea2_Offline_Qwen3VL_KleinSwap_10ErosI2V_batch_v8.1_resolution_master_video.json"
         )
         workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
         i2v = workflow["extra"]["rh_i2v"]
@@ -314,8 +314,18 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertFalse(any(node.get("type") == "PreviewImage" for node in subgraph["nodes"]))
         self.assertFalse(any(node.get("type") in {"SetNode", "GetNode"} for node in subgraph["nodes"]))
         self.assertFalse(any(node.get("id") == 549 for node in subgraph["nodes"]))
+        self.assertFalse(any(node.get("id") in {791, 792} for node in subgraph["nodes"]))
+        self.assertEqual(
+            [item["type"] for item in subgraph["inputs"]],
+            ["IMAGE", "STRING", "INT", "INT", "STRING"],
+        )
+        root_links = {link[0]: link for link in workflow["links"]}
+        self.assertEqual(root_links[30158][1:6], [38, 0, 107, 2, "INT"])
+        self.assertEqual(root_links[30159][1:6], [38, 1, 107, 3, "INT"])
         final_video = next(node for node in subgraph["nodes"] if node.get("id") == 597)
         self.assertTrue(final_video["widgets_values"]["save_output"])
+        final_upscale = next(node for node in subgraph["nodes"] if node.get("id") == 755)
+        self.assertEqual(final_upscale["widgets_values"][1], 1.0)
         self.assertTrue(any(node.get("type") == "LTX2STGGuider" for node in subgraph["nodes"]))
 
 
