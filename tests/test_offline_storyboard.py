@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from node import (
+    RH_ConfigurableStoryboard_Node,
     RH_OfflineStoryboardParser_Node,
     RH_OfflineStoryboardRequest_Node,
     RH_OfflineStoryboardSceneRequests_Node,
@@ -75,6 +76,13 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertIn('"scene_id": 4', request)
         self.assertIn('"character_bible"', request)
         self.assertIn('"supporting_characters"', request)
+        self.assertIn('"ethnicity"', request)
+        self.assertIn('"nationality"', request)
+        self.assertIn('"skin_tone"', request)
+        self.assertIn('"height"', request)
+        self.assertIn('"body_build"', request)
+        self.assertIn('"body_proportions"', request)
+        self.assertIn('do not infer nationality from facial appearance alone', request)
         self.assertIn('"story_fact"', request)
         self.assertIn('"current_action"', request)
         self.assertIn('"must_not_show"', request)
@@ -117,6 +125,12 @@ class OfflineStoryboardParserTests(unittest.TestCase):
                 "title": "Locked character",
                 "character_bible": {
                     "identity": "young East Asian woman",
+                    "ethnicity": "East Asian",
+                    "nationality": "Chinese",
+                    "skin_tone": "fair neutral skin tone",
+                    "height": "165 cm",
+                    "body_build": "slender athletic build",
+                    "body_proportions": "narrow shoulders and long limbs",
                     "hairstyle": "black blunt-bang bob with a white flower",
                     "clothing": "light beige embroidered gauze jacket and pink trousers",
                 },
@@ -141,6 +155,10 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertEqual((count, language, ratio), (2, "English", "16:9"))
         self.assertIn("black blunt-bang bob with a white flower", requests[0])
         self.assertIn("black blunt-bang bob with a white flower", requests[1])
+        self.assertIn("slender athletic build", requests[0])
+        self.assertIn("slender athletic build", requests[1])
+        self.assertIn("Chinese", requests[0])
+        self.assertIn("Chinese", requests[1])
         self.assertIn("SOURCE STORY", requests[0])
         self.assertIn("CURRENT ACTION", requests[0])
         self.assertNotIn('"next_scene"', requests[0])
@@ -196,6 +214,12 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             {
                 "character_bible": {
                     "identity": "young East Asian woman",
+                    "ethnicity": "East Asian",
+                    "nationality": "Chinese",
+                    "skin_tone": "fair neutral skin tone",
+                    "height": "165 cm",
+                    "body_build": "slender athletic build",
+                    "body_proportions": "narrow shoulders and long limbs",
                     "hairstyle": "black blunt-bang bob with a white flower",
                     "clothing": "light beige embroidered gauze jacket and pink trousers",
                 },
@@ -221,10 +245,31 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         prefix = "16:9, CHARACTER CONTINUITY LOCK"
         self.assertTrue(all(prompt.startswith(prefix) for prompt in positive))
         self.assertTrue(all("black blunt-bang bob with a white flower" in prompt for prompt in positive))
+        self.assertTrue(all('"ethnicity":"East Asian"' in prompt for prompt in positive))
+        self.assertTrue(all('"nationality":"Chinese"' in prompt for prompt in positive))
+        self.assertTrue(all('"body_build":"slender athletic build"' in prompt for prompt in positive))
+        self.assertTrue(
+            all('"body_proportions":"narrow shoulders and long limbs"' in prompt for prompt in positive)
+        )
         storyboard = json.loads(storyboard_json)
         self.assertEqual(storyboard["generation_settings"]["mode"], "offline_qwen_two_pass")
         self.assertEqual(storyboard["shots"][0]["raw_prompt"], "wide shot in a courtyard")
         self.assertEqual(storyboard["shots"][0]["scene_label"], "SCENE 01/02")
+
+    def test_api_director_schema_locks_demographic_and_body_traits(self):
+        request = RH_ConfigurableStoryboard_Node()._director_request(
+            "A woman opens a letter.", 2, "English", "16:9"
+        )
+        for field in (
+            '"ethnicity"',
+            '"nationality"',
+            '"skin_tone"',
+            '"height"',
+            '"body_build"',
+            '"body_proportions"',
+        ):
+            self.assertIn(field, request)
+        self.assertIn("国籍不得仅凭面部外观推断", request)
 
     def test_numbered_scene_save_prefix(self):
         self.assertEqual(

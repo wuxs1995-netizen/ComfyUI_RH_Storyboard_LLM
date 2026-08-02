@@ -13,16 +13,16 @@ from PIL import Image
 
 DEFAULT_SCENE_ROLE = """You are a professional cinematic storyboard prompt writer.
 Turn exactly one scene into a production-ready image-generation prompt.
-Preserve the shared character and visual style. Return JSON only."""
+Preserve the shared character identity, ethnicity, nationality, skin tone, height, body build, body proportions and visual style. Return JSON only."""
 
 DEFAULT_DIRECTOR_ROLE = """你是一名专业影视分镜总导演。
 根据用户故事和可选参考人物图，创建结构严格、镜头连续的短片分镜大纲。
-你必须保持角色外貌、服装、身份、道具和环境状态的一致性，并且只返回合法 JSON。"""
+你必须保持角色外貌、族裔、国籍、肤色、身高、身材体型、身体比例、服装、身份、道具和环境状态的一致性，并且只返回合法 JSON。"""
 
 DEFAULT_SCENE_INSTRUCTION = """Generate one storyboard frame for the current scene.
 
 Requirements:
-1. Preserve the character's face, age, hairstyle and clothing.
+1. Preserve the character's face, age, ethnicity, nationality, skin tone, height, body build, body proportions, hairstyle and clothing.
 2. Describe only the current scene.
 3. State shot size, composition, camera angle, lighting, environment and action.
 4. Use concrete visual language rather than abstract literary language.
@@ -49,7 +49,8 @@ ASPECT_PRESETS = {
 
 DEFAULT_OFFLINE_DIRECTOR_INSTRUCTION = """You are a local cinematic storyboard continuity director.
 First create one canonical character bible from the story and optional reference image, then create a chronological scene outline.
-The character's identity, face, age, hairstyle, hair accessories, clothing and signature props are IMMUTABLE across every scene unless the story explicitly requires a change.
+The character's identity, face, age, ethnicity, nationality, skin tone, height, body build, body proportions, hairstyle, hair accessories, clothing and signature props are IMMUTABLE across every scene unless the story explicitly requires a change.
+Nationality is a cultural/legal identity, not a facial feature: preserve it when stated by the story, and never infer or change it solely from appearance.
 Location, action, emotion, shot size, camera angle, composition, lighting, time and weather are MUTABLE scene variables.
 The source story is authoritative. Preserve every named or implied character, their relationships, the central action and the outcome. Do not replace, remove or invent major story events.
 When a short story is expanded into many shots, subdivide the existing action into visual beats instead of adding unrelated actions or a new plot.
@@ -58,7 +59,7 @@ Return valid JSON only. Do not use Markdown, explanations, comments or text outs
 
 DEFAULT_OFFLINE_SCENE_INSTRUCTION = """You are a cinematic Krea 2 prompt engineer.
 Generate exactly one production-ready image prompt for the supplied scene package.
-Treat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them.
+Treat CHARACTER LOCK and STYLE LOCK as immutable source-of-truth data. Never shorten, reinterpret, replace or contradict them, including ethnicity, nationality, skin tone, height, body build and body proportions.
 Treat SOURCE STORY and STORY FACT as authoritative. The shot must visualize that fact without changing the people, action, relationship or outcome.
 Generate one still frame, not a montage or an action sequence. Depict exactly CURRENT ACTION and its resulting visible state.
 Do not combine previous actions, future actions, transitions or the entire story into this prompt.
@@ -706,7 +707,8 @@ SETTINGS:
 REQUIREMENTS:
 1. Analyze the protagonist once and create exactly one canonical character_bible. Assign it character_id="primary".
 2. {language_rule}
-3. character_bible must explicitly lock identity, age, facial features, hairstyle, hair accessories, clothing and signature props. These values must never change between scenes.
+3. character_bible must explicitly lock identity, age, ethnicity, nationality, skin tone, height, body build, body proportions, facial features, hairstyle, hair accessories, clothing and signature props. These values must never change between scenes.
+   Nationality must come from SOURCE STORY when stated; do not infer nationality from facial appearance alone. If it is not specified, use "unspecified".
 4. Create one supporting_characters entry for every other recurring or action-relevant person in the source story. Never omit a person who performs or receives an action.
 5. Each scene.story_fact must state which exact source-story fact that shot visualizes. characters_present must list the canonical character_id values visible in that shot.
 6. Each scene.current_action must contain exactly one visible action or one held reaction. Never combine multiple temporal steps into one scene.
@@ -719,8 +721,8 @@ REQUIREMENTS:
 12. Return only this JSON shape:
 {{
   "title": "",
-  "character_bible": {{"character_id": "primary", "identity": "", "age": "", "facial_features": "", "hairstyle": "", "hair_accessories": "", "clothing": "", "signature_props": ""}},
-  "supporting_characters": [{{"character_id": "supporting_1", "role": "", "identity": "", "age": "", "appearance": "", "hairstyle": "", "clothing": ""}}],
+  "character_bible": {{"character_id": "primary", "identity": "", "age": "", "ethnicity": "", "nationality": "", "skin_tone": "", "height": "", "body_build": "", "body_proportions": "", "facial_features": "", "hairstyle": "", "hair_accessories": "", "clothing": "", "signature_props": ""}},
+  "supporting_characters": [{{"character_id": "supporting_1", "role": "", "identity": "", "age": "", "ethnicity": "", "nationality": "", "skin_tone": "", "height": "", "body_build": "", "body_proportions": "", "appearance": "", "hairstyle": "", "clothing": ""}}],
   "style_bible": {{"visual_style": "", "color_palette": "", "aspect_ratio": "{aspect_ratio}"}},
   "scenes": [
     {scene_shape}
@@ -825,7 +827,7 @@ class RH_OfflineStoryboardSceneRequests_Node:
 
 {language_rule}
 The final prompt must use aspect ratio {aspect_ratio}.
-Do not invent or restate alternative character traits. The parser will prepend CHARACTER LOCK verbatim.
+Do not invent or restate alternative character traits, including ethnicity, nationality, skin tone, height, body build or body proportions. The parser will prepend CHARACTER LOCK verbatim.
 Visualize only STORY FACT from SOURCE STORY. Do not add a new action, remove an actor, change who acts on whom, or invent a different outcome.
 This is shot {index + 1}/{requested_count}. Show exactly CURRENT ACTION as one frozen visual moment.
 Do not depict anything in MUST NOT SHOW. Do not summarize previous or future shots. Do not write a sequence using "then", "after that", "gradually", or multiple consecutive actions.
@@ -837,7 +839,7 @@ Return only:
 {{
   "scene_id": {index + 1},
   "prompt": "",
-  "negative_prompt": "blurry face, deformed anatomy, extra fingers, low quality, inconsistent character, changed hairstyle, changed clothing",
+  "negative_prompt": "blurry face, deformed anatomy, extra fingers, low quality, inconsistent character, changed ethnicity, changed skin tone, changed body build, inconsistent body proportions, changed hairstyle, changed clothing",
   "camera": "",
   "continuity_note": ""
 }}"""
@@ -1283,7 +1285,7 @@ class RH_ConfigurableStoryboard_Node:
 要求：
 1. scenes 数组必须恰好包含 {scene_count} 项，scene_id 从 1 连续编号。
 2. 每个场景只包含一个明确动作，并记录地点、时间、景别、机位、动作、情绪和连续性。
-3. character_bible 必须固定人物外貌、服装和身份。
+3. character_bible 必须固定人物身份、年龄、族裔、人种外观、国籍、肤色、身高、身材体型、身体比例、面部特征、发型、服装和标志性道具。国籍不得仅凭面部外观推断；故事未指定时填写“未指定”。
 4. style_bible 必须固定视觉风格、色彩和 aspect_ratio={aspect_ratio}。
 5. generation_settings 必须原样记录 scene_count、prompt_language 和 aspect_ratio。
 6. 只输出合法 JSON，不要 Markdown，不要解释。
@@ -1291,7 +1293,7 @@ class RH_ConfigurableStoryboard_Node:
 输出结构：
 {{
   "title": "故事标题",
-  "character_bible": {{"appearance": "", "clothing": "", "identity": ""}},
+  "character_bible": {{"character_id": "primary", "identity": "", "age": "", "ethnicity": "", "nationality": "", "skin_tone": "", "height": "", "body_build": "", "body_proportions": "", "facial_features": "", "hairstyle": "", "clothing": "", "signature_props": ""}},
   "style_bible": {{"visual_style": "", "color_palette": "", "aspect_ratio": "{aspect_ratio}"}},
   "generation_settings": {{"scene_count": {scene_count}, "prompt_language": "{prompt_language}", "aspect_ratio": "{aspect_ratio}"}},
   "scenes": [

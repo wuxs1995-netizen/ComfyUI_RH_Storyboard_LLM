@@ -41,7 +41,7 @@ The prompt lists can be connected to text-encoding and image-generation nodes. C
 
 ### RH Storyboard - Offline Qwen Request
 
-Builds the first-pass planning request for ComfyUI's native `TextGenerate` node. The model analyzes the reference image once, creates one canonical primary-character bible plus supporting-character records, and outlines the requested scenes while separating immutable character traits from mutable scene details. The exact source story is also emitted for the second pass. This node performs no network request and has no API inputs.
+Builds the first-pass planning request for ComfyUI's native `TextGenerate` node. The model analyzes the reference image once, creates one canonical primary-character bible plus supporting-character records, and outlines the requested scenes while separating immutable character traits from mutable scene details. The locked records include identity, age, ethnicity, nationality, skin tone, height, body build, body proportions, facial features, hairstyle, clothing and signature props. Nationality is preserved from the source story and is not inferred from facial appearance alone. The exact source story is also emitted for the second pass. This node performs no network request and has no API inputs.
 
 Connect its `qwen_prompt` output to `TextGenerate.prompt`, and connect the same reference image directly to `TextGenerate.image` when using a vision-language model such as Qwen3VL.
 
@@ -53,7 +53,7 @@ The v7.5 request format also separates `state_before`, one `current_action`, `st
 
 ### RH Storyboard - Offline Qwen Parser
 
-Collects the second-pass local model responses into ordered `positive_prompts` and `negative_prompts` lists for batch image generation. When connected to the locked outline, it programmatically prepends the identical canonical character and style anchors to every final prompt, so a small local model cannot silently omit or rewrite hairstyle, clothing, age or identity between shots. It also accepts the older single-pass format for compatibility.
+Collects the second-pass local model responses into ordered `positive_prompts` and `negative_prompts` lists for batch image generation. When connected to the locked outline, it programmatically prepends the identical canonical character and style anchors to every final prompt, so a small local model cannot silently omit or rewrite ethnicity, nationality, skin tone, height, body build, body proportions, hairstyle, clothing, age or identity between shots. It also accepts the older single-pass format for compatibility.
 
 The parser raises a clear error when the local model returns fewer usable prompts than requested instead of silently producing an empty storyboard. Increase `TextGenerate.max_length` or reduce the scene count if that happens.
 
@@ -75,9 +75,19 @@ Takes the combined `storyboard_json` output and selects one scene by number. It 
 {
   "title": "Story title",
   "character_bible": {
-    "appearance": "Fixed appearance",
+    "character_id": "primary",
+    "identity": "Character identity",
+    "age": "Young adult",
+    "ethnicity": "East Asian",
+    "nationality": "Chinese",
+    "skin_tone": "Fair neutral skin tone",
+    "height": "Approximately 165 cm",
+    "body_build": "Slender athletic build",
+    "body_proportions": "Narrow shoulders, long limbs and balanced proportions",
+    "facial_features": "Fixed facial structure and eye shape",
+    "hairstyle": "Black blunt-bang bob",
     "clothing": "Fixed clothing",
-    "identity": "Character identity"
+    "signature_props": "White flower hair accessory"
   },
   "style_bible": {
     "visual_style": "Cinematic realism",
