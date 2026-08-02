@@ -5404,7 +5404,7 @@
         "checkpoint": "10Eros_v1-fp8mixed_learned.safetensors",
         "text_encoder": "gemma_3_12B_it_fp8_scaled.safetensors",
         "latent_upscaler": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
-        "distilled_lora": "ltx23/ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+        "distilled_lora": "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
         "quality_lora": "ltx23/OmniNFT_converted_lora.safetensors"
       }
     }
@@ -16055,7 +16055,7 @@
               }
             },
             "widgets_values": [
-              "ltx23\\ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+              "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
               1,
               1,
               0,
@@ -16206,7 +16206,7 @@
               }
             },
             "widgets_values": [
-              "ltx23\\ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+              "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
               1,
               0,
               1,
@@ -16357,7 +16357,7 @@
               }
             },
             "widgets_values": [
-              "ltx23\\ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+              "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
               1,
               1,
               0,
@@ -16508,7 +16508,7 @@
               }
             },
             "widgets_values": [
-              "ltx23\\ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+              "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
               1,
               0,
               1,
