@@ -1097,6 +1097,43 @@ class RH_StoryboardSceneSave_Node:
         return {"ui": {"images": saved}}
 
 
+class RH_StoryboardScenePrefixes_Node:
+    """Build a mapped filename-prefix list matching Scene_01, Scene_02... outputs."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "scene_count": ("INT", {"default": 8, "min": 1, "max": 999}),
+                "base_prefix": (
+                    "STRING",
+                    {"default": "RH_Krea2_Offline_Storyboard_Video"},
+                ),
+                "start_scene": ("INT", {"default": 1, "min": 1, "max": 999}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("filename_prefixes",)
+    OUTPUT_IS_LIST = (True,)
+    FUNCTION = "build_prefixes"
+    CATEGORY = "Runninghub/Storyboard"
+
+    def build_prefixes(
+        self,
+        scene_count,
+        base_prefix="RH_Krea2_Offline_Storyboard_Video",
+        start_scene=1,
+    ):
+        count = max(1, int(scene_count))
+        first_scene = max(1, int(start_scene))
+        prefix = str(base_prefix).strip().strip("/\\") or "RH_Krea2_Offline_Storyboard_Video"
+        return ([
+            _scene_save_prefix(prefix, first_scene + offset)
+            for offset in range(count)
+        ],)
+
+
 class RH_MultiSceneLLM_Node:
     """Fan out one independent OpenAI-compatible request per scene."""
 

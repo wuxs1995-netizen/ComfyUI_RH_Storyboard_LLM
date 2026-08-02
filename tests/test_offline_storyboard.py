@@ -6,6 +6,7 @@ from node import (
     RH_OfflineStoryboardParser_Node,
     RH_OfflineStoryboardRequest_Node,
     RH_OfflineStoryboardSceneRequests_Node,
+    RH_StoryboardScenePrefixes_Node,
     _scene_save_prefix,
     parse_offline_storyboard_text,
 )
@@ -231,6 +232,21 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             "RH_Krea2_Offline_Storyboard_Scene_03",
         )
 
+    def test_numbered_video_prefix_list(self):
+        prefixes = RH_StoryboardScenePrefixes_Node().build_prefixes(
+            3,
+            "RH_Krea2_Offline_Storyboard_Video",
+            2,
+        )[0]
+        self.assertEqual(
+            prefixes,
+            [
+                "RH_Krea2_Offline_Storyboard_Video_Scene_02",
+                "RH_Krea2_Offline_Storyboard_Video_Scene_03",
+                "RH_Krea2_Offline_Storyboard_Video_Scene_04",
+            ],
+        )
+
     def test_bundled_qwen_workflow_enables_default_template(self):
         workflow_path = (
             Path(__file__).resolve().parents[1]
@@ -276,6 +292,30 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
         self.assertFalse(any(node.get("type") == "PreviewImage" for node in workflow["nodes"]))
         self.assertTrue(any(node.get("type") == "RH_STORYBOARD_SCENE_SAVE" for node in workflow["nodes"]))
+
+    def test_optional_i2v_workflow_is_bypassed_and_has_no_temp_outputs(self):
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "RH_Krea2_Offline_Qwen3VL_KleinSwap_10ErosI2V_batch_v8.0_optional_video.json"
+        )
+        workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+        i2v = workflow["extra"]["rh_i2v"]
+        subgraph = next(
+            item
+            for item in workflow["definitions"]["subgraphs"]
+            if item["id"] == i2v["subgraph_id"]
+        )
+        root_nodes = {node["id"]: node for node in workflow["nodes"]}
+        self.assertEqual(root_nodes[107]["mode"], 4)
+        self.assertEqual(root_nodes[108]["mode"], 4)
+        self.assertEqual(root_nodes[109]["type"], "Fast Groups Bypasser (rgthree)")
+        self.assertEqual(root_nodes[109]["properties"]["matchTitle"], i2v["group_title"])
+        self.assertFalse(any(node.get("type") == "PreviewImage" for node in subgraph["nodes"]))
+        self.assertFalse(any(node.get("id") == 549 for node in subgraph["nodes"]))
+        final_video = next(node for node in subgraph["nodes"] if node.get("id") == 597)
+        self.assertTrue(final_video["widgets_values"]["save_output"])
+        self.assertTrue(any(node.get("type") == "LTX2STGGuider" for node in subgraph["nodes"]))
 
 
 if __name__ == "__main__":

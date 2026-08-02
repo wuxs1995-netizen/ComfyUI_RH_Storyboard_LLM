@@ -61,6 +61,10 @@ The parser raises a clear error when the local model returns fewer usable prompt
 
 Saves mapped image lists directly in the output root with explicit names such as `RH_Krea2_Offline_Storyboard_Scene_01_00001_.png`, making the corresponding storyboard shot visible in ComfyUI's asset list and on disk. The saver is forced to run on every queue; an empty final image route now raises an error instead of silently returning no assets.
 
+### RH Storyboard - Scene Filename Prefixes
+
+Creates a mapped list of `Scene_01`, `Scene_02`... filename prefixes from the storyboard scene count. The optional 10Eros I2V branch uses this list so each saved MP4 can be matched to its source storyboard frame.
+
 ### RH Storyboard - Select Scene Prompt
 
 Takes the combined `storyboard_json` output and selects one scene by number. It returns separate positive prompt, negative prompt, camera, continuity note and shot JSON outputs. Duplicate this node for each visible storyboard branch when you want every scene connected to its own preview or image-generation workflow.
@@ -124,6 +128,7 @@ After restarting ComfyUI, hard-refresh the browser and search for `RH Storyboard
 - [`workflows/RH_configurable_director_Krea2Image_ReActor_batch.json`](workflows/RH_configurable_director_Krea2Image_ReActor_batch.json) keeps the Krea2Image batch workflow and adds an enabled-by-default `ReActorFaceSwap` identity pass. The same uploaded character reference is sent to the director and broadcast as the ReActor source image for every generated storyboard frame. Separate previews show the swapped result, the original Krea image, and the Krea base image. Version 5.3 exports the workflow with ComfyUI schema version `0.4` for frontend link-rendering compatibility and uses the dedicated `30001+` namespace for root links so they cannot collide with links inside the bundled Krea subgraphs.
 - [`workflows/RH_Krea2_API_Director_KleinSwap_batch_v6.4_no_temp_previews.json`](workflows/RH_Krea2_API_Director_KleinSwap_batch_v6.4_no_temp_previews.json) is the online API director workflow with KleinSwap and asset-library-safe final previews. Its API-key field is intentionally empty in the repository.
 - [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.5_progressive_numbered.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.5_progressive_numbered.json) is the current fully offline Qwen3VL workflow. It adds progressive one-action-per-shot planning, prevents previous/future actions from being merged into the current prompt, prefixes prompts with `SCENE 01/xx`, and saves final images with matching `Scene_01`, `Scene_02` filenames. Character locks and source-story fidelity remain enabled.
+- [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_10ErosI2V_batch_v8.0_optional_video.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_10ErosI2V_batch_v8.0_optional_video.json) extends v7.5 with the selected 10Eros/LTX 2.3 LikenessGuide I2V workflow packaged as one subgraph node. The entire video group is bypassed by default and is toggled with `Fast Groups Bypasser (rgthree)`. Final scene images, matching scene prompts and numbered video prefixes are mapped together; the original first-pass temp-video and `PreviewImage` outputs were removed, while final H.264 MP4 saving remains enabled.
 - [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json) is retained as the earlier native-parser offline workflow for compatibility.
 
 For a fully offline workflow, use `Offline Qwen Request → TextGenerate (plan) → Offline Locked Scene Requests → TextGenerate (shots) → Offline Qwen Parser`.
@@ -131,6 +136,8 @@ For a fully offline workflow, use `Offline Qwen Request → TextGenerate (plan) 
 Add a new API key locally after importing any workflow; exported workflow files intentionally contain no API key. The Krea2Image workflow also requires the models and custom nodes used by the original Krea2Image blueprint to be installed on the ComfyUI instance.
 
 The ReActor workflow additionally requires [`ComfyUI-ReActor`](https://github.com/Gourieff/ComfyUI-ReActor) and `inswapper_128.onnx`. The default InsightFace/inswapper weights commonly carry non-commercial research restrictions; verify the model license before commercial use.
+
+The optional v8.0 video branch requires 10S Nodes, ComfyUI-LTXVideo, VideoHelperSuite, KJNodes, rgthree, the NVIDIA RTX video nodes, and the models referenced by the selected workflow: `10Eros_v1-fp8mixed_learned.safetensors`, `gemma_3_12B_it_fp8_scaled.safetensors`, `ltx-2.3-spatial-upscaler-x2-1.1.safetensors`, the `fro90_ceil72_condsafe` distilled LoRA and `OmniNFT_converted_lora.safetensors`. Leave the purple video group bypassed when only storyboard images are needed.
 
 ## Troubleshooting hidden links
 
