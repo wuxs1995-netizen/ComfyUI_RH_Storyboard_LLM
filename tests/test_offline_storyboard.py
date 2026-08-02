@@ -312,6 +312,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertEqual(root_nodes[109]["type"], "Fast Groups Bypasser (rgthree)")
         self.assertEqual(root_nodes[109]["properties"]["matchTitle"], i2v["group_title"])
         self.assertFalse(any(node.get("type") == "PreviewImage" for node in subgraph["nodes"]))
+        self.assertFalse(any(node.get("type") in {"SetNode", "GetNode"} for node in subgraph["nodes"]))
         self.assertFalse(any(node.get("id") == 549 for node in subgraph["nodes"]))
         final_video = next(node for node in subgraph["nodes"] if node.get("id") == 597)
         self.assertTrue(final_video["widgets_values"]["save_output"])

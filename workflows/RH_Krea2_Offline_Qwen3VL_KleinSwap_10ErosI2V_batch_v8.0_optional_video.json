@@ -14688,90 +14688,6 @@
         "widgets": [],
         "nodes": [
           {
-            "id": 560,
-            "type": "GetNode",
-            "pos": [
-              231.68427124392713,
-              3365.8233044983185
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 0,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "FLOAT",
-                "type": "FLOAT",
-                "links": [
-                  1320
-                ]
-              }
-            ],
-            "title": "Get_fps_float",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "fps_float"
-            ],
-            "color": "#232",
-            "bgcolor": "#353"
-          },
-          {
-            "id": 546,
-            "type": "GetNode",
-            "pos": [
-              -124.41455081715429,
-              4554.729113523804
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 1,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "INT",
-                "type": "INT",
-                "links": [
-                  1297
-                ]
-              }
-            ],
-            "title": "Get_length_0",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "length_0"
-            ],
-            "color": "#1b4669",
-            "bgcolor": "#29699c"
-          },
-          {
             "id": 630,
             "type": "SolidMask",
             "pos": [
@@ -14843,48 +14759,6 @@
               1024,
               1024
             ]
-          },
-          {
-            "id": 279,
-            "type": "GetNode",
-            "pos": [
-              1254.5088394005425,
-              3043.669001545407
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 2,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "links": [
-                  586
-                ]
-              }
-            ],
-            "title": "Get_aud_vae",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "aud_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
           },
           {
             "id": 275,
@@ -14967,7 +14841,8 @@
                 "name": "NOISE",
                 "type": "NOISE",
                 "links": [
-                  1272
+                  1274,
+                  2265
                 ]
               }
             ],
@@ -14992,149 +14867,6 @@
               728885192875474,
               "randomize"
             ]
-          },
-          {
-            "id": 526,
-            "type": "SetNode",
-            "pos": [
-              -119.6034969855223,
-              3592.656729380967
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 54,
-            "mode": 0,
-            "inputs": [
-              {
-                "name": "NOISE",
-                "type": "NOISE",
-                "link": 1272
-              }
-            ],
-            "outputs": [
-              {
-                "name": "NOISE",
-                "type": "NOISE",
-                "links": [
-                  1274
-                ]
-              }
-            ],
-            "title": "Set_noise_seed",
-            "properties": {
-              "Node name for S&R": "SetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "previousName": "noise_seed",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "noise_seed"
-            ],
-            "color": "#2e2e2e",
-            "bgcolor": "#242121"
-          },
-          {
-            "id": 214,
-            "type": "SetNode",
-            "pos": [
-              -1117.3074592682947,
-              3477.466425119632
-            ],
-            "size": [
-              210,
-              60
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 39,
-            "mode": 0,
-            "inputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "link": 1548
-              }
-            ],
-            "outputs": [
-              {
-                "name": "*",
-                "type": "*",
-                "links": null
-              }
-            ],
-            "title": "Set_vid_vae",
-            "properties": {
-              "Node name for S&R": "SetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "previousName": "vid_vae",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "vid_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
-          },
-          {
-            "id": 207,
-            "type": "SetNode",
-            "pos": [
-              -1131.973635706669,
-              3343.177927274481
-            ],
-            "size": [
-              236.85766571079353,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 40,
-            "mode": 0,
-            "inputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "link": 1423
-              }
-            ],
-            "outputs": [
-              {
-                "name": "*",
-                "type": "*",
-                "links": null
-              }
-            ],
-            "title": "Set_aud_vae",
-            "properties": {
-              "Node name for S&R": "SetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "previousName": "aud_vae",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "aud_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
           },
           {
             "id": 652,
@@ -15239,343 +14971,6 @@
             ],
             "color": "#233",
             "bgcolor": "#355"
-          },
-          {
-            "id": 545,
-            "type": "GetNode",
-            "pos": [
-              -115.01505791637044,
-              4796.53233460559
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 3,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "INT",
-                "type": "INT",
-                "links": [
-                  1296
-                ]
-              }
-            ],
-            "title": "Get_fps_int",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "fps_int"
-            ],
-            "color": "#1b4669",
-            "bgcolor": "#29699c"
-          },
-          {
-            "id": 543,
-            "type": "GetNode",
-            "pos": [
-              -112.3520085965529,
-              4844.393106338195
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 4,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "INT",
-                "type": "INT",
-                "links": [
-                  1295
-                ]
-              }
-            ],
-            "title": "Get_length_0",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "length_0"
-            ],
-            "color": "#1b4669",
-            "bgcolor": "#29699c"
-          },
-          {
-            "id": 558,
-            "type": "GetNode",
-            "pos": [
-              -111.18858564259628,
-              4901.712773792447
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 5,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "links": [
-                  1318
-                ]
-              }
-            ],
-            "title": "Get_aud_vae",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "aud_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
-          },
-          {
-            "id": 635,
-            "type": "GetNode",
-            "pos": [
-              3675.6779403363385,
-              3944.3050892612646
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 6,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "FLOAT",
-                "type": "FLOAT",
-                "links": [
-                  1481
-                ]
-              }
-            ],
-            "title": "Get_fps_float",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "fps_float"
-            ],
-            "color": "#232",
-            "bgcolor": "#353"
-          },
-          {
-            "id": 714,
-            "type": "GetNode",
-            "pos": [
-              2813.360751805555,
-              3608.779911647415
-            ],
-            "size": [
-              210,
-              60
-            ],
-            "flags": {
-              "collapsed": false
-            },
-            "order": 7,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "IMAGE",
-                "type": "IMAGE",
-                "links": [
-                  2107
-                ]
-              }
-            ],
-            "title": "Get_resized_image",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "resized_image"
-            ],
-            "color": "#2a363b",
-            "bgcolor": "#3f5159"
-          },
-          {
-            "id": 589,
-            "type": "GetNode",
-            "pos": [
-              2811.237769683004,
-              3354.9545348795436
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": false
-            },
-            "order": 8,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "links": [
-                  1957,
-                  2109
-                ]
-              }
-            ],
-            "title": "Get_vid_vae",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "vid_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
-          },
-          {
-            "id": 553,
-            "type": "GetNode",
-            "pos": [
-              766.7614713430766,
-              3904.3966824075724
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 9,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "links": [
-                  1307
-                ]
-              }
-            ],
-            "title": "Get_vid_vae",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "vid_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
-          },
-          {
-            "id": 554,
-            "type": "GetNode",
-            "pos": [
-              767.012010065247,
-              4049.870641019706
-            ],
-            "size": [
-              210,
-              34
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 10,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "links": [
-                  1305
-                ]
-              }
-            ],
-            "title": "Get_aud_vae",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "aud_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
           },
           {
             "id": 527,
@@ -15759,48 +15154,6 @@
             ],
             "color": "#322",
             "bgcolor": "#533"
-          },
-          {
-            "id": 584,
-            "type": "GetNode",
-            "pos": [
-              3658.1883945443683,
-              3604.7452337560367
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 14,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "NOISE",
-                "type": "NOISE",
-                "links": [
-                  2265
-                ]
-              }
-            ],
-            "title": "Get_noise_seed",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "noise_seed"
-            ],
-            "color": "#2e2e2e",
-            "bgcolor": "#242121"
           },
           {
             "id": 783,
@@ -16737,7 +16090,13 @@
                 "name": "VAE",
                 "type": "VAE",
                 "links": [
-                  1548
+                  1307,
+                  1886,
+                  1942,
+                  1957,
+                  2109,
+                  2118,
+                  2288
                 ]
               }
             ],
@@ -16790,7 +16149,10 @@
                 "name": "Audio VAE",
                 "type": "VAE",
                 "links": [
-                  1423
+                  586,
+                  1305,
+                  1318,
+                  1382
                 ]
               }
             ],
@@ -16877,100 +16239,6 @@
             "bgcolor": "#353"
           },
           {
-            "id": 621,
-            "type": "SetNode",
-            "pos": [
-              -958.3432191260194,
-              4126.741475466073
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 47,
-            "mode": 0,
-            "inputs": [
-              {
-                "name": "INT",
-                "type": "INT",
-                "link": 1426
-              }
-            ],
-            "outputs": [
-              {
-                "name": "*",
-                "type": "*",
-                "links": null
-              }
-            ],
-            "title": "Set_seed",
-            "properties": {
-              "Node name for S&R": "SetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "previousName": "seed",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "seed"
-            ],
-            "color": "#1b4669",
-            "bgcolor": "#29699c"
-          },
-          {
-            "id": 539,
-            "type": "SetNode",
-            "pos": [
-              -1326.181128285111,
-              3985.2457797596926
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 50,
-            "mode": 0,
-            "inputs": [
-              {
-                "name": "INT",
-                "type": "INT",
-                "link": 1291
-              }
-            ],
-            "outputs": [
-              {
-                "name": "*",
-                "type": "*",
-                "links": null
-              }
-            ],
-            "title": "Set_fps_int",
-            "properties": {
-              "Node name for S&R": "SetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "previousName": "fps_int",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "fps_int"
-            ],
-            "color": "#1b4669",
-            "bgcolor": "#29699c"
-          },
-          {
             "id": 540,
             "type": "CM_FloatToInt",
             "pos": [
@@ -17003,7 +16271,7 @@
                 "name": "INT",
                 "type": "INT",
                 "links": [
-                  1291
+                  1296
                 ]
               }
             ],
@@ -17022,53 +16290,6 @@
             "widgets_values": [
               0
             ]
-          },
-          {
-            "id": 541,
-            "type": "SetNode",
-            "pos": [
-              -1324.7350287090942,
-              3981.856291903243
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 42,
-            "mode": 0,
-            "inputs": [
-              {
-                "name": "FLOAT",
-                "type": "FLOAT",
-                "link": 1293
-              }
-            ],
-            "outputs": [
-              {
-                "name": "*",
-                "type": "*",
-                "links": null
-              }
-            ],
-            "title": "Set_fps_float",
-            "properties": {
-              "Node name for S&R": "SetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "previousName": "fps_float",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "fps_float"
-            ],
-            "color": "#232",
-            "bgcolor": "#353"
           },
           {
             "id": 740,
@@ -17119,93 +16340,6 @@
               }
             },
             "widgets_values": []
-          },
-          {
-            "id": 555,
-            "type": "GetNode",
-            "pos": [
-              1156.3202034737023,
-              4098.632564761237
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 20,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "FLOAT",
-                "type": "FLOAT",
-                "links": null
-              }
-            ],
-            "title": "Get_fps_float",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "fps_float"
-            ],
-            "color": "#232",
-            "bgcolor": "#353"
-          },
-          {
-            "id": 538,
-            "type": "SetNode",
-            "pos": [
-              -1016.2055636732887,
-              3959.9189761521307
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 58,
-            "mode": 0,
-            "inputs": [
-              {
-                "name": "INT",
-                "type": "INT",
-                "link": 2221
-              }
-            ],
-            "outputs": [
-              {
-                "name": "*",
-                "type": "*",
-                "links": null
-              }
-            ],
-            "title": "Set_length",
-            "properties": {
-              "Node name for S&R": "SetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "previousName": "",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "length_0"
-            ],
-            "color": "#1b4669",
-            "bgcolor": "#29699c"
           },
           {
             "id": 798,
@@ -17261,7 +16395,8 @@
                 "name": "INT",
                 "type": "INT",
                 "links": [
-                  2221
+                  1295,
+                  1297
                 ]
               },
               {
@@ -17312,7 +16447,8 @@
                 "type": "FLOAT",
                 "links": [
                   1292,
-                  1293
+                  1320,
+                  1481
                 ]
               }
             ],
@@ -17332,97 +16468,6 @@
             ],
             "color": "#222",
             "bgcolor": "#000"
-          },
-          {
-            "id": 559,
-            "type": "GetNode",
-            "pos": [
-              -434.9434296471235,
-              4269.844380713661
-            ],
-            "size": [
-              210,
-              58
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 22,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "links": [
-                  1886,
-                  2118,
-                  2288
-                ]
-              }
-            ],
-            "title": "Get_vid_vae",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "vid_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
-          },
-          {
-            "id": 331,
-            "type": "SetNode",
-            "pos": [
-              -358.9001328669263,
-              4800.997387078811
-            ],
-            "size": [
-              210,
-              60
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 57,
-            "mode": 0,
-            "inputs": [
-              {
-                "name": "IMAGE",
-                "type": "IMAGE",
-                "link": 2106
-              }
-            ],
-            "outputs": [
-              {
-                "name": "*",
-                "type": "*",
-                "links": null
-              }
-            ],
-            "title": "Set_resized_image",
-            "properties": {
-              "Node name for S&R": "SetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "previousName": "resized_image",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.8",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "resized_image"
-            ],
-            "color": "#2a363b",
-            "bgcolor": "#3f5159"
           },
           {
             "id": 531,
@@ -17535,7 +16580,7 @@
                 "type": "IMAGE",
                 "links": [
                   1281,
-                  2106,
+                  2107,
                   2111,
                   2140,
                   2290
@@ -18085,90 +17130,6 @@
               "secondTabWidth": 65
             },
             "widgets_values": []
-          },
-          {
-            "id": 594,
-            "type": "GetNode",
-            "pos": [
-              4017.8094594305244,
-              3699.089876138927
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 23,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "links": [
-                  1942
-                ]
-              }
-            ],
-            "title": "Get_vid_vae",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "vid_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
-          },
-          {
-            "id": 592,
-            "type": "GetNode",
-            "pos": [
-              4014.0155853784486,
-              3817.035660623502
-            ],
-            "size": [
-              210,
-              50
-            ],
-            "flags": {
-              "collapsed": true
-            },
-            "order": 24,
-            "mode": 0,
-            "inputs": [],
-            "outputs": [
-              {
-                "name": "VAE",
-                "type": "VAE",
-                "links": [
-                  1382
-                ]
-              }
-            ],
-            "title": "Get_aud_vae",
-            "properties": {
-              "Node name for S&R": "GetNode",
-              "aux_id": "kijai/ComfyUI-KJNodes",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "version": "7.5.2",
-                "input_ue_unconnectable": {}
-              }
-            },
-            "widgets_values": [
-              "aud_vae"
-            ],
-            "color": "#322",
-            "bgcolor": "#533"
           },
           {
             "id": 548,
@@ -20293,8 +19254,7 @@
                 "shape": 3,
                 "type": "INT",
                 "links": [
-                  1273,
-                  1426
+                  1273
                 ]
               }
             ],
@@ -21297,19 +20257,11 @@
           },
           {
             "id": 586,
-            "origin_id": 279,
+            "origin_id": 617,
             "origin_slot": 0,
             "target_id": 274,
             "target_slot": 1,
             "type": "VAE"
-          },
-          {
-            "id": 1272,
-            "origin_id": 525,
-            "origin_slot": 0,
-            "target_id": 526,
-            "target_slot": 0,
-            "type": "NOISE"
           },
           {
             "id": 1273,
@@ -21321,7 +20273,7 @@
           },
           {
             "id": 1274,
-            "origin_id": 526,
+            "origin_id": 525,
             "origin_slot": 0,
             "target_id": 510,
             "target_slot": 0,
@@ -21368,14 +20320,6 @@
             "type": "INT"
           },
           {
-            "id": 1291,
-            "origin_id": 540,
-            "origin_slot": 0,
-            "target_id": 539,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
             "id": 1292,
             "origin_id": 542,
             "origin_slot": 0,
@@ -21384,24 +20328,16 @@
             "type": "FLOAT"
           },
           {
-            "id": 1293,
-            "origin_id": 542,
-            "origin_slot": 0,
-            "target_id": 541,
-            "target_slot": 0,
-            "type": "FLOAT"
-          },
-          {
             "id": 1295,
-            "origin_id": 543,
-            "origin_slot": 0,
+            "origin_id": 798,
+            "origin_slot": 1,
             "target_id": 535,
             "target_slot": 1,
             "type": "INT"
           },
           {
             "id": 1296,
-            "origin_id": 545,
+            "origin_id": 540,
             "origin_slot": 0,
             "target_id": 535,
             "target_slot": 2,
@@ -21409,15 +20345,15 @@
           },
           {
             "id": 1297,
-            "origin_id": 546,
-            "origin_slot": 0,
+            "origin_id": 798,
+            "origin_slot": 1,
             "target_id": 534,
             "target_slot": 2,
             "type": "INT"
           },
           {
             "id": 1305,
-            "origin_id": 554,
+            "origin_id": 617,
             "origin_slot": 0,
             "target_id": 550,
             "target_slot": 1,
@@ -21433,15 +20369,15 @@
           },
           {
             "id": 1307,
-            "origin_id": 553,
-            "origin_slot": 0,
+            "origin_id": 646,
+            "origin_slot": 2,
             "target_id": 552,
             "target_slot": 1,
             "type": "VAE"
           },
           {
             "id": 1318,
-            "origin_id": 558,
+            "origin_id": 617,
             "origin_slot": 0,
             "target_id": 535,
             "target_slot": 0,
@@ -21449,7 +20385,7 @@
           },
           {
             "id": 1320,
-            "origin_id": 560,
+            "origin_id": 542,
             "origin_slot": 0,
             "target_id": 523,
             "target_slot": 2,
@@ -21457,7 +20393,7 @@
           },
           {
             "id": 1382,
-            "origin_id": 592,
+            "origin_id": 617,
             "origin_slot": 0,
             "target_id": 593,
             "target_slot": 1,
@@ -21496,22 +20432,6 @@
             "type": "CLIP"
           },
           {
-            "id": 1423,
-            "origin_id": 617,
-            "origin_slot": 0,
-            "target_id": 207,
-            "target_slot": 0,
-            "type": "VAE"
-          },
-          {
-            "id": 1426,
-            "origin_id": 524,
-            "origin_slot": 0,
-            "target_id": 621,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
             "id": 1457,
             "origin_id": 630,
             "origin_slot": 0,
@@ -21521,7 +20441,7 @@
           },
           {
             "id": 1481,
-            "origin_id": 635,
+            "origin_id": 542,
             "origin_slot": 0,
             "target_id": 597,
             "target_slot": 4,
@@ -21550,14 +20470,6 @@
             "target_id": 557,
             "target_slot": 0,
             "type": "MODEL"
-          },
-          {
-            "id": 1548,
-            "origin_id": 646,
-            "origin_slot": 2,
-            "target_id": 214,
-            "target_slot": 0,
-            "type": "VAE"
           },
           {
             "id": 1566,
@@ -21649,8 +20561,8 @@
           },
           {
             "id": 1886,
-            "origin_id": 559,
-            "origin_slot": 0,
+            "origin_id": 646,
+            "origin_slot": 2,
             "target_id": 731,
             "target_slot": 2,
             "type": "VAE"
@@ -21665,8 +20577,8 @@
           },
           {
             "id": 1942,
-            "origin_id": 594,
-            "origin_slot": 0,
+            "origin_id": 646,
+            "origin_slot": 2,
             "target_id": 740,
             "target_slot": 1,
             "type": "VAE"
@@ -21681,8 +20593,8 @@
           },
           {
             "id": 1957,
-            "origin_id": 589,
-            "origin_slot": 0,
+            "origin_id": 646,
+            "origin_slot": 2,
             "target_id": 744,
             "target_slot": 2,
             "type": "VAE"
@@ -21720,16 +20632,8 @@
             "type": "MODEL"
           },
           {
-            "id": 2106,
-            "origin_id": 531,
-            "origin_slot": 0,
-            "target_id": 331,
-            "target_slot": 0,
-            "type": "IMAGE"
-          },
-          {
             "id": 2107,
-            "origin_id": 714,
+            "origin_id": 531,
             "origin_slot": 0,
             "target_id": 770,
             "target_slot": 4,
@@ -21737,8 +20641,8 @@
           },
           {
             "id": 2109,
-            "origin_id": 589,
-            "origin_slot": 0,
+            "origin_id": 646,
+            "origin_slot": 2,
             "target_id": 770,
             "target_slot": 0,
             "type": "VAE"
@@ -21753,8 +20657,8 @@
           },
           {
             "id": 2118,
-            "origin_id": 559,
-            "origin_slot": 0,
+            "origin_id": 646,
+            "origin_slot": 2,
             "target_id": 772,
             "target_slot": 0,
             "type": "VAE"
@@ -21912,14 +20816,6 @@
             "type": "INT"
           },
           {
-            "id": 2221,
-            "origin_id": 798,
-            "origin_slot": 1,
-            "target_id": 538,
-            "target_slot": 0,
-            "type": "INT"
-          },
-          {
             "id": 2236,
             "origin_id": 535,
             "origin_slot": 0,
@@ -21937,7 +20833,7 @@
           },
           {
             "id": 2265,
-            "origin_id": 584,
+            "origin_id": 525,
             "origin_slot": 0,
             "target_id": 802,
             "target_slot": 0,
@@ -22017,8 +20913,8 @@
           },
           {
             "id": 2288,
-            "origin_id": 559,
-            "origin_slot": 0,
+            "origin_id": 646,
+            "origin_slot": 2,
             "target_id": 806,
             "target_slot": 2,
             "type": "VAE"
