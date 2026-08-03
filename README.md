@@ -14,6 +14,10 @@ Runs the complete director pipeline from one node. Choose 1–12 scenes, Chinese
 
 Makes one OpenAI-compatible chat-completions request. It supports text, an optional reference image, or an optional video.
 
+### RH Image API - OpenAI Compatible
+
+Generates one image through an OpenAI-compatible images endpoint and returns a native ComfyUI `IMAGE`. It accepts mapped storyboard prompt lists, so one API request is made per scene. Responses containing either `b64_json` or a downloadable image `url` are supported. The bundled v8.3 workflow uses model `gpt-image-2` and keeps this branch bypassed by default.
+
 ### RH Storyboard - Split One Scene
 
 Parses a director response containing strict JSON and extracts:
@@ -139,6 +143,7 @@ After restarting ComfyUI, hard-refresh the browser and search for `RH Storyboard
 - [`workflows/RH_Krea2_API_Director_KleinSwap_batch_v6.4_no_temp_previews.json`](workflows/RH_Krea2_API_Director_KleinSwap_batch_v6.4_no_temp_previews.json) is the online API director workflow with KleinSwap and asset-library-safe final previews. Its API-key field is intentionally empty in the repository.
 - [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.5_progressive_numbered.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.5_progressive_numbered.json) is the current fully offline Qwen3VL workflow. It adds progressive one-action-per-shot planning, prevents previous/future actions from being merged into the current prompt, prefixes prompts with `SCENE 01/xx`, and saves final images with matching `Scene_01`, `Scene_02` filenames. Character locks and source-story fidelity remain enabled.
 - [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_10ErosI2V_batch_v8.0_optional_video.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_10ErosI2V_batch_v8.0_optional_video.json) extends v7.5 with the selected 10Eros/LTX 2.3 LikenessGuide I2V workflow packaged as one subgraph node. The entire video group is bypassed by default and is toggled with `Fast Groups Bypasser (rgthree)`. Final scene images, matching scene prompts and numbered video prefixes are mapped together; the original first-pass temp-video and `PreviewImage` outputs were removed, while final H.264 MP4 saving remains enabled.
+- [`workflows/RH_Krea2_OnlineAPI_Klein_10eros_i2v_v83_gpt_image_2.json`](workflows/RH_Krea2_OnlineAPI_Klein_10eros_i2v_v83_gpt_image_2.json) keeps the online storyboard director, Krea2, KleinSwap and optional 10Eros video branch, and adds a second bypassed image-generation group using the same OpenAI-compatible Base URL with model `gpt-image-2`. Enter the same API key in the director and image nodes, then enable the `gpt-image-2` group through its `Fast Groups Bypasser` control.
 - [`workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json`](workflows/RH_Krea2_Offline_Qwen3VL_KleinSwap_batch_v7.0_native_parser.json) is retained as the earlier native-parser offline workflow for compatibility.
 
 For a fully offline workflow, use `Offline Qwen Request → TextGenerate (plan) → Offline Locked Scene Requests → TextGenerate (shots) → Offline Qwen Parser`.

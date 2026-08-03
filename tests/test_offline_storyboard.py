@@ -1,3 +1,4 @@
+import base64
 import json
 import unittest
 from pathlib import Path
@@ -8,12 +9,18 @@ from node import (
     RH_OfflineStoryboardRequest_Node,
     RH_OfflineStoryboardSceneRequests_Node,
     RH_StoryboardScenePrefixes_Node,
+    _extract_api_image_bytes,
     _scene_save_prefix,
     parse_offline_storyboard_text,
 )
 
 
 class OfflineStoryboardParserTests(unittest.TestCase):
+    def test_extracts_base64_image_api_response(self):
+        expected = b"image-bytes"
+        response = {"data": [{"b64_json": base64.b64encode(expected).decode("ascii")}]}
+        self.assertEqual(_extract_api_image_bytes(response), expected)
+
     def test_parses_strict_json_scenes(self):
         raw = json.dumps(
             {

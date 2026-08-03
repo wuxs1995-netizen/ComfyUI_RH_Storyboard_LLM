@@ -96,6 +96,49 @@ def encode_image_b64(ref_image):
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
+def _extract_api_image_bytes(response, timeout_seconds=180):
+    """Read the first image from an OpenAI-compatible images response."""
+    data = (
+        response.get("data")
+        if isinstance(response, dict)
+        else getattr(response, "data", None)
+    )
+    if not data:
+        raise ValueError("The image API response did not contain any image data.")
+
+    item = data[0]
+    if isinstance(item, dict):
+        b64_json = item.get("b64_json")
+        image_url = item.get("url")
+    else:
+        b64_json = getattr(item, "b64_json", None)
+        image_url = getattr(item, "url", None)
+
+    if b64_json:
+        try:
+            return base64.b64decode(b64_json)
+        except Exception as exc:
+            raise ValueError("The image API returned invalid base64 image data.") from exc
+
+    if image_url:
+        if str(image_url).startswith("data:"):
+            try:
+                return base64.b64decode(str(image_url).split(",", 1)[1])
+            except Exception as exc:
+                raise ValueError("The image API returned an invalid image data URL.") from exc
+
+        from urllib.request import Request, urlopen
+
+        request = Request(str(image_url), headers={"User-Agent": "ComfyUI-RH-Storyboard/1.0"})
+        try:
+            with urlopen(request, timeout=float(timeout_seconds)) as download:
+                return download.read()
+        except Exception as exc:
+            raise ValueError(f"Unable to download the generated image: {exc}") from exc
+
+    raise ValueError("The image API response contained neither b64_json nor url.")
+
+
 def _get_video_file_path(video):
     if hasattr(video, "_VideoFromFile__file"):
         path = getattr(video, "_VideoFromFile__file", None)
@@ -555,6 +598,81 @@ class RH_LLMAPI_Node:
             seed=seed,
         )
         return (_completion_text(completion),)
+
+
+class RH_GPTImageAPI_Node:
+    """Generate one ComfyUI IMAGE through an OpenAI-compatible images endpoint."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "api_baseurl": (
+                    "STRING",
+                    {"multiline": False, "default": "http://127.0.0.1:8000/v1"},
+                ),
+                "api_key": ("STRING", {"default": ""}),
+                "model": ("STRING", {"default": "gpt-image-2"}),
+                "prompt": ("STRING", {"forceInput": True}),
+                "size": (
+                    ["auto", "1024x1024", "1536x1024", "1024x1536"],
+                    {"default": "1024x1024"},
+                ),
+                "quality": (
+                    ["auto", "low", "medium", "high"],
+                    {"default": "auto"},
+                ),
+                "timeout_seconds": (
+                    "INT",
+                    {"default": 180, "min": 10, "max": 1800, "step": 10},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    FUNCTION = "generate_image"
+    CATEGORY = "Runninghub/Image API"
+
+    def generate_image(
+        self,
+        api_baseurl,
+        api_key,
+        model,
+        prompt,
+        size="1024x1024",
+        quality="auto",
+        timeout_seconds=180,
+    ):
+        prompt_text = str(prompt or "").strip()
+        if not prompt_text:
+            raise ValueError("The gpt-image prompt is empty.")
+        if not str(api_key or "").strip():
+            raise ValueError("The gpt-image API key is empty.")
+
+        client = OpenAI(
+            api_key=str(api_key).strip(),
+            base_url=str(api_baseurl).strip(),
+            timeout=float(timeout_seconds),
+        )
+        request = {
+            "model": str(model or "gpt-image-2").strip(),
+            "prompt": prompt_text,
+            "n": 1,
+        }
+        if size != "auto":
+            request["size"] = size
+        if quality != "auto":
+            request["quality"] = quality
+
+        response = client.images.generate(**request)
+        image_bytes = _extract_api_image_bytes(response, timeout_seconds)
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image_array = np.asarray(image).astype(np.float32) / 255.0
+
+        import torch
+
+        return (torch.from_numpy(image_array).unsqueeze(0),)
 
 
 class RH_SceneJSONSplitter_Node:

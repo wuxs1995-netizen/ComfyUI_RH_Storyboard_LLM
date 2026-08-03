@@ -1,4 +1,5 @@
 from .node import (
+    RH_GPTImageAPI_Node,
     RH_LLMAPI_Node,
     RH_ConfigurableStoryboard_Node,
     RH_MultiSceneLLM_Node,
@@ -13,6 +14,7 @@ from .node import (
 
 
 NODE_CLASS_MAPPINGS = {
+    "RH_GPT_IMAGE_API": RH_GPTImageAPI_Node,
     "RH_LLMAPI_NODE": RH_LLMAPI_Node,
     "RH_CONFIGURABLE_STORYBOARD": RH_ConfigurableStoryboard_Node,
     "RH_SCENE_JSON_SPLITTER": RH_SceneJSONSplitter_Node,
@@ -26,6 +28,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    "RH_GPT_IMAGE_API": "RH Image API - OpenAI Compatible",
     "RH_LLMAPI_NODE": "Runninghub LLM API Node",
     "RH_CONFIGURABLE_STORYBOARD": "RH Storyboard - Configurable Director",
     "RH_SCENE_JSON_SPLITTER": "RH Storyboard - Split One Scene",
