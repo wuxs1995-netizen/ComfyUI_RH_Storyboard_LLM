@@ -1,6 +1,6 @@
 {
   "id": "rh-krea2-online-api-klein-10eros-i2v-v83-gpt-image-2",
-  "revision": 20,
+  "revision": 21,
   "last_node_id": 1380,
   "last_link_id": 30165,
   "nodes": [
@@ -3660,7 +3660,7 @@
       "title": "gpt-image-2 生图启停｜Fast Groups Bypasser（默认关闭）",
       "properties": {
         "matchColors": "",
-        "matchTitle": "可选｜分镜图生成视频｜10Eros LTX 2.3 I2V",
+        "matchTitle": "可选｜gpt-image-2 在线 API 逐分镜生图｜默认 Bypass",
         "showNav": true,
         "showAllGraphs": true,
         "sort": "position",
