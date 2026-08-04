@@ -51,6 +51,12 @@ After each API response, the node programmatically prefixes the exact character,
 
 This version improves text-enforced continuity. It still uses Krea2 text-to-image for the base frames; a future location-master image reference stage can provide stronger pixel-level environment consistency.
 
+### Offline Qwen3VL Continuity v82
+
+`RH_OFFLINE_STORYBOARD_CONTINUITY_REQUEST`, `RH_OFFLINE_STORYBOARD_CONTINUITY_SCENE_REQUESTS` and `RH_OFFLINE_STORYBOARD_CONTINUITY_PARSER` provide the same location, prop and state-ledger locks without calling an external API. The first local Qwen3VL pass creates all shared bibles, the second pass writes one current-shot prompt at a time, and the parser prepends the canonical locks in code.
+
+The bundled workflow is `workflows/RH_Krea2_Offline_Qwen3vl_Klein_10eros_i2v_v82_continuity_lock.json`. It is derived from the v81 Qwen3VL/Klein/10Eros workflow and preserves its original image, face-swap and optional I2V connections.
+
 ### RH Storyboard - Offline Qwen Request
 
 Builds the first-pass planning request for ComfyUI's native `TextGenerate` node. The model analyzes the reference image once, creates one canonical primary-character bible plus supporting-character records, and outlines the requested scenes while separating immutable character traits from mutable scene details. The locked records include identity, age, ethnicity, nationality, skin tone, height, body build, body proportions, facial features, hairstyle, clothing and signature props. Nationality is preserved from the source story and is not inferred from facial appearance alone. The exact source story is also emitted for the second pass. This node performs no network request and has no API inputs.

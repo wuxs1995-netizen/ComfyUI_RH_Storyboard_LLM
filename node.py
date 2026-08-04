@@ -721,6 +721,7 @@ def _build_continuity_scene_request(outline, scenes, scene_index, instruction):
         "story_fact": scene.get("story_fact", ""),
         "shot_number": scene_index + 1,
         "total_shots": len(scenes),
+        "beat_role": scene.get("beat_role", ""),
         "character_lock": _scene_character_lock(
             outline.get("character_bible", {}),
             outline.get("supporting_characters", []),
@@ -738,7 +739,15 @@ def _build_continuity_scene_request(outline, scenes, scene_index, instruction):
     return f"{instruction.strip()}\n\nSCENE PACKAGE:\n{_json_text(payload)}"
 
 
-def _normalize_continuity_outline(outline, scenes, story, scene_count, prompt_language, aspect_ratio):
+def _normalize_continuity_outline(
+    outline,
+    scenes,
+    story,
+    scene_count,
+    prompt_language,
+    aspect_ratio,
+    mode="online_continuity_v84",
+):
     """Repair small schema omissions without letting later scene calls redesign shared assets."""
     location_entries = _bible_entries(outline.get("location_bible", {}), ("location_id", "id"))
     location_map = {}
@@ -793,7 +802,7 @@ def _normalize_continuity_outline(outline, scenes, story, scene_count, prompt_la
     outline["prop_bible"] = prop_map
     outline["scenes"] = scenes
     outline["generation_settings"] = {
-        "mode": "online_continuity_v84",
+        "mode": str(mode),
         "scene_count": int(scene_count),
         "prompt_language": str(prompt_language),
         "aspect_ratio": str(aspect_ratio),
@@ -2179,3 +2188,260 @@ Previous response:
             width,
             height,
         )
+
+
+class RH_OfflineStoryboardContinuityRequest_Node:
+    """Build the local-Qwen planning request with shared location and prop bibles."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "story": (
+                    "STRING",
+                    {"multiline": True, "default": "一个人物经历一段连续的视觉故事。"},
+                ),
+                "scene_count": ("INT", {"default": 8, "min": 1, "max": 12}),
+                "prompt_language": (["中文", "English"], {"default": "中文"}),
+                "aspect_ratio": (list(ASPECT_PRESETS.keys()), {"default": "16:9"}),
+                "director_instruction": (
+                    "STRING",
+                    {"multiline": True, "default": DEFAULT_CONTINUITY_DIRECTOR_ROLE},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "INT", "STRING", "STRING", "INT", "INT", "STRING")
+    RETURN_NAMES = (
+        "qwen_prompt",
+        "scene_count",
+        "prompt_language",
+        "aspect_ratio",
+        "width",
+        "height",
+        "source_story",
+    )
+    FUNCTION = "build_request"
+    CATEGORY = "Runninghub/Storyboard/Offline/Continuity"
+
+    def build_request(
+        self,
+        story,
+        scene_count,
+        prompt_language,
+        aspect_ratio,
+        director_instruction,
+    ):
+        request = RH_ConfigurableStoryboardContinuity_Node()._director_request(
+            story,
+            int(scene_count),
+            prompt_language,
+            aspect_ratio,
+        )
+        additional = str(director_instruction or "").strip()
+        if "MUTABLE scene variables" in additional and "Location, action, emotion" in additional:
+            additional = ""
+        if additional and additional != DEFAULT_CONTINUITY_DIRECTOR_ROLE:
+            request += f"\n\nADDITIONAL LOCAL DIRECTOR RULES:\n{additional}"
+        request += (
+            "\n\nLOCAL TWO-PASS RULE: This is the planning pass. "
+            "Do not write final image-generation prompts. Return the complete continuity JSON only."
+        )
+        width, height = ASPECT_PRESETS[aspect_ratio]
+        return (
+            request,
+            int(scene_count),
+            str(prompt_language),
+            str(aspect_ratio),
+            width,
+            height,
+            str(story).strip(),
+        )
+
+
+class RH_OfflineStoryboardContinuitySceneRequests_Node:
+    """Create local-Qwen per-scene requests with canonical visual asset locks."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "outline_text": ("STRING", {"forceInput": True}),
+                "source_story": ("STRING", {"forceInput": True}),
+                "scene_count": ("INT", {"default": 8, "min": 1, "max": 12, "forceInput": True}),
+                "prompt_language": ("STRING", {"forceInput": True}),
+                "aspect_ratio": ("STRING", {"forceInput": True}),
+                "scene_instruction": (
+                    "STRING",
+                    {"multiline": True, "default": DEFAULT_CONTINUITY_SCENE_INSTRUCTION},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "INT", "STRING", "STRING")
+    RETURN_NAMES = ("qwen_prompts", "outline_json", "scene_count", "prompt_language", "aspect_ratio")
+    OUTPUT_IS_LIST = (True, False, False, False, False)
+    FUNCTION = "build_scene_requests"
+    CATEGORY = "Runninghub/Storyboard/Offline/Continuity"
+
+    def build_scene_requests(
+        self,
+        outline_text,
+        source_story,
+        scene_count,
+        prompt_language,
+        aspect_ratio,
+        scene_instruction,
+    ):
+        requested_count = int(scene_count)
+        outline, scenes = _parse_outline(outline_text)
+        if len(scenes) != requested_count:
+            raise ValueError(
+                f"Local Qwen continuity outline returned {len(scenes)} scenes; "
+                f"expected exactly {requested_count}. Increase planning max_length and run again."
+            )
+        if not _bible_anchor(outline.get("character_bible")):
+            raise ValueError("The local Qwen continuity outline did not return a usable character_bible.")
+        style_bible = outline.get("style_bible")
+        if not isinstance(style_bible, dict):
+            style_bible = {}
+            outline["style_bible"] = style_bible
+        style_bible["aspect_ratio"] = str(aspect_ratio)
+        if not isinstance(outline.get("supporting_characters"), list):
+            outline["supporting_characters"] = []
+
+        outline = _normalize_continuity_outline(
+            outline,
+            scenes,
+            source_story,
+            requested_count,
+            prompt_language,
+            aspect_ratio,
+            mode="offline_qwen_continuity_v82",
+        )
+        additional = str(scene_instruction or "").strip()
+        if "Treat CHARACTER LOCK and STYLE LOCK" in additional and "LOCATION LOCK" not in additional:
+            rules_index = additional.find("Rules:")
+            additional = additional[rules_index:] if rules_index >= 0 else ""
+        effective_instruction = DEFAULT_CONTINUITY_SCENE_INSTRUCTION
+        if additional and additional != DEFAULT_CONTINUITY_SCENE_INSTRUCTION:
+            effective_instruction += f"\n\nAdditional local prompt-writing rules:\n{additional}"
+        language_rule = (
+            "Write prompt values entirely in English."
+            if str(prompt_language).strip().lower() == "english"
+            else "所有 prompt 字段必须完全使用简体中文，稳定 ID 可以保留 ASCII。"
+        )
+
+        requests = []
+        for index in range(requested_count):
+            request = _build_continuity_scene_request(
+                outline,
+                outline["scenes"],
+                index,
+                effective_instruction,
+            )
+            request += f"""
+
+{language_rule}
+The final prompt must use aspect ratio {aspect_ratio}.
+The parser will prepend CHARACTER, LOCATION, PROP, STYLE and CONTINUITY locks verbatim. Do not invent alternative locked values.
+Return only:
+{{
+  "scene_id": {index + 1},
+  "prompt": "",
+  "negative_prompt": "blurry face, deformed anatomy, extra fingers, low quality, inconsistent character, inconsistent architecture, changed room layout, changed prop design, changed prop color",
+  "camera": "",
+  "continuity_note": ""
+}}"""
+            requests.append(request)
+        return (
+            requests,
+            _json_text(outline),
+            requested_count,
+            str(prompt_language),
+            str(aspect_ratio),
+        )
+
+
+class RH_OfflineStoryboardContinuityParser_Node(RH_OfflineStoryboardParser_Node):
+    """Parse local scene responses and enforce all continuity locks in code."""
+
+    CATEGORY = "Runninghub/Storyboard/Offline/Continuity"
+
+    def parse_storyboard(
+        self,
+        generated_text,
+        scene_count,
+        prompt_language,
+        aspect_ratio,
+        default_negative_prompt,
+        outline_json=None,
+    ):
+        _, _, storyboard_json, requested_count = super().parse_storyboard(
+            generated_text,
+            scene_count,
+            prompt_language,
+            aspect_ratio,
+            default_negative_prompt,
+            outline_json,
+        )
+
+        def first(value):
+            if isinstance(value, (list, tuple)):
+                return value[0] if value else None
+            return value
+
+        supplied_outline = first(outline_json)
+        if not isinstance(supplied_outline, str) or not supplied_outline.strip():
+            raise ValueError("The offline continuity parser requires the locked outline_json input.")
+        outline, scenes = _parse_outline(supplied_outline)
+        if len(scenes) != requested_count:
+            raise ValueError(
+                f"The continuity outline contains {len(scenes)} scenes; expected {requested_count}."
+            )
+        language = str(first(prompt_language) or "中文")
+        ratio = str(first(aspect_ratio) or "16:9")
+        storyboard = _extract_json_text(storyboard_json)
+        shots = storyboard.get("shots")
+        if not isinstance(shots, list) or len(shots) < requested_count:
+            actual = len(shots) if isinstance(shots, list) else 0
+            raise ValueError(f"The parsed storyboard contains {actual} shots; expected {requested_count}.")
+
+        locked_positive = []
+        locked_negative = []
+        for index, shot in enumerate(shots[:requested_count]):
+            raw_prompt = str(shot.get("raw_prompt") or shot.get("prompt") or "").strip()
+            locked, anchors = _locked_continuity_prompt(
+                raw_prompt,
+                outline,
+                scenes,
+                index,
+                ratio,
+                language,
+            )
+            shot["raw_prompt"] = raw_prompt
+            shot["prompt"] = locked
+            shot["scene_label"] = f"SCENE {index + 1:02d}/{requested_count:02d}"
+            shot["scene_outline"] = scenes[index]
+            shot["story_fact"] = scenes[index].get("story_fact", "")
+            shot["characters_present"] = scenes[index].get("characters_present", [])
+            shot["location_id"] = scenes[index].get("location_id", "")
+            shot["props_present"] = scenes[index].get("props_present", [])
+            shot.update(anchors)
+            shot["negative_prompt"] = _merge_negative_prompt(shot.get("negative_prompt", ""))
+            locked_positive.append(locked)
+            locked_negative.append(shot["negative_prompt"])
+
+        storyboard["source_story"] = outline.get("source_story", "")
+        storyboard["character_bible"] = outline.get("character_bible", {})
+        storyboard["supporting_characters"] = outline.get("supporting_characters", [])
+        storyboard["location_bible"] = outline.get("location_bible", {})
+        storyboard["prop_bible"] = outline.get("prop_bible", {})
+        storyboard["style_bible"] = outline.get("style_bible", {})
+        storyboard["generation_settings"] = {
+            "mode": "offline_qwen_continuity_v82",
+            "scene_count": requested_count,
+            "prompt_language": language,
+            "aspect_ratio": ratio,
+        }
+        return locked_positive, locked_negative, _json_text(storyboard), requested_count

@@ -9,6 +9,9 @@ from node import (
     RH_ConfigurableStoryboardContinuity_Node,
     RH_ConfigurableStoryboard_Node,
     RH_MultiSceneContinuityLLM_Node,
+    RH_OfflineStoryboardContinuityParser_Node,
+    RH_OfflineStoryboardContinuityRequest_Node,
+    RH_OfflineStoryboardContinuitySceneRequests_Node,
     RH_OfflineStoryboardParser_Node,
     RH_OfflineStoryboardRequest_Node,
     RH_OfflineStoryboardSceneRequests_Node,
@@ -481,6 +484,143 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertEqual(
             storyboard["shots"][0]["location_anchor"],
             storyboard["shots"][1]["location_anchor"],
+        )
+
+    def test_offline_continuity_request_requires_shared_visual_asset_bibles(self):
+        request, count, language, ratio, width, height, story = (
+            RH_OfflineStoryboardContinuityRequest_Node().build_request(
+                "A girl walks along one street and lightning splits the same old tree.",
+                2,
+                "English",
+                "16:9",
+                "Keep the story cinematic.",
+            )
+        )
+        self.assertEqual((count, language, ratio, width, height), (2, "English", "16:9", 1024, 576))
+        self.assertIn('"location_bible"', request)
+        self.assertIn('"prop_bible"', request)
+        self.assertIn('"state_before"', request)
+        self.assertIn("planning pass", request)
+        self.assertEqual(story, "A girl walks along one street and lightning splits the same old tree.")
+
+    def test_offline_continuity_pipeline_hard_locks_location_prop_and_state(self):
+        outline = json.dumps(
+            {
+                "title": "Old tree",
+                "character_bible": {
+                    "character_id": "primary",
+                    "identity": "Chinese teenage girl",
+                    "hairstyle": "black twin braids",
+                    "clothing": "blue linen jacket",
+                },
+                "supporting_characters": [],
+                "location_bible": {
+                    "song_street": {
+                        "location_id": "song_street",
+                        "architecture": "dark timber shops with grey tiled roofs",
+                        "spatial_layout": "east-west stone street",
+                        "fixed_objects": "one red wine banner at the west entrance",
+                    }
+                },
+                "prop_bible": {
+                    "old_tree": {
+                        "prop_id": "old_tree",
+                        "design": "thick forked trunk leaning left",
+                        "material": "weathered bark",
+                        "color": "dark brown",
+                    }
+                },
+                "style_bible": {"visual_style": "cinematic realism"},
+                "scenes": [
+                    {
+                        "scene_id": 1,
+                        "story_fact": "The girl sees the old tree.",
+                        "characters_present": ["primary"],
+                        "location_id": "song_street",
+                        "props_present": ["old_tree"],
+                        "state_before": {"old_tree": "intact"},
+                        "current_action": "the girl looks at the tree",
+                        "state_after": {"old_tree": "intact"},
+                        "must_not_show": "the tree breaking",
+                    },
+                    {
+                        "scene_id": 2,
+                        "story_fact": "Lightning splits the old tree.",
+                        "characters_present": ["primary"],
+                        "location_id": "song_street",
+                        "props_present": ["old_tree"],
+                        "current_action": "lightning splits the tree",
+                        "state_after": {"old_tree": "split and fallen left"},
+                        "must_not_show": "a restored intact tree after the strike",
+                    },
+                ],
+            }
+        )
+        requests, normalized, count, language, ratio = (
+            RH_OfflineStoryboardContinuitySceneRequests_Node().build_scene_requests(
+                outline,
+                "A girl sees an old tree and lightning splits it.",
+                2,
+                "English",
+                "16:9",
+                "Use concrete visual detail.",
+            )
+        )
+        self.assertEqual((count, language, ratio), (2, "English", "16:9"))
+        self.assertEqual(len(requests), 2)
+        self.assertIn('"location_lock"', requests[0])
+        self.assertIn('"prop_locks"', requests[1])
+        self.assertIn('"old_tree": "intact"', requests[1])
+        self.assertNotIn('"next_scene"', requests[1])
+        self.assertEqual(json.loads(normalized)["generation_settings"]["mode"], "offline_qwen_continuity_v82")
+
+        raw = [
+            json.dumps({"scene_id": 1, "prompt": "wide shot of the girl beside a tree"}),
+            json.dumps({"scene_id": 2, "prompt": "low-angle shot of lightning striking"}),
+        ]
+        positive, negative, storyboard_json, parsed_count = (
+            RH_OfflineStoryboardContinuityParser_Node().parse_storyboard(
+                raw,
+                [2],
+                ["English"],
+                ["16:9"],
+                ["low quality"],
+                [normalized],
+            )
+        )
+        self.assertEqual(parsed_count, 2)
+        self.assertTrue(all("LOCATION CONTINUITY LOCK" in prompt for prompt in positive))
+        self.assertTrue(all("dark timber shops" in prompt for prompt in positive))
+        self.assertTrue(all("thick forked trunk leaning left" in prompt for prompt in positive))
+        self.assertTrue(all("changed prop color" in item for item in negative))
+        storyboard = json.loads(storyboard_json)
+        self.assertEqual(storyboard["generation_settings"]["mode"], "offline_qwen_continuity_v82")
+        self.assertEqual(
+            storyboard["shots"][0]["location_anchor"],
+            storyboard["shots"][1]["location_anchor"],
+        )
+
+    def test_bundled_offline_v82_replaces_only_continuity_planning_nodes(self):
+        workflow_dir = Path(__file__).resolve().parents[1] / "workflows"
+        base = json.loads(
+            (workflow_dir / "RH_Krea2_Offline_Qwen3vl_Klein_10eros_i2v_v81.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        workflow = json.loads(
+            (workflow_dir / "RH_Krea2_Offline_Qwen3vl_Klein_10eros_i2v_v82_continuity_lock.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        nodes = {node["id"]: node for node in workflow["nodes"]}
+        self.assertEqual(nodes[99]["type"], "RH_OFFLINE_STORYBOARD_CONTINUITY_REQUEST")
+        self.assertEqual(nodes[103]["type"], "RH_OFFLINE_STORYBOARD_CONTINUITY_SCENE_REQUESTS")
+        self.assertEqual(nodes[100]["type"], "RH_OFFLINE_STORYBOARD_CONTINUITY_PARSER")
+        self.assertEqual(base["links"], workflow["links"])
+        self.assertEqual(base["definitions"], workflow["definitions"])
+        self.assertEqual(
+            workflow["extra"]["rh_workflow_version"],
+            "krea2-offline-qwen3vl-v8.2-continuity-lock-klein-10eros-i2v",
         )
 
     def test_bundled_v84_workflow_uses_continuity_director(self):
