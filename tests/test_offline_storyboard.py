@@ -2,14 +2,21 @@ import base64
 import json
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from node import (
+    RH_ConfigurableStoryboardContinuity_Node,
     RH_ConfigurableStoryboard_Node,
+    RH_MultiSceneContinuityLLM_Node,
     RH_OfflineStoryboardParser_Node,
     RH_OfflineStoryboardRequest_Node,
     RH_OfflineStoryboardSceneRequests_Node,
     RH_StoryboardScenePrefixes_Node,
+    _build_continuity_scene_request,
     _extract_api_image_bytes,
+    _locked_continuity_prompt,
+    _normalize_continuity_outline,
     _scene_save_prefix,
     parse_offline_storyboard_text,
 )
@@ -277,6 +284,220 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         ):
             self.assertIn(field, request)
         self.assertIn("国籍不得仅凭面部外观推断", request)
+
+    def test_continuity_director_schema_requires_location_props_and_state_ledger(self):
+        request = RH_ConfigurableStoryboardContinuity_Node()._director_request(
+            "A girl breaks an old tree on a Song dynasty street.",
+            2,
+            "English",
+            "16:9",
+        )
+        for field in (
+            '"location_bible"',
+            '"prop_bible"',
+            '"location_id"',
+            '"props_present"',
+            '"state_before"',
+            '"state_after"',
+            '"must_not_show"',
+        ):
+            self.assertIn(field, request)
+        self.assertIn("same location_id", request)
+        self.assertIn("same prop_id", request)
+
+    def test_continuity_prompt_programmatically_locks_shared_location_and_prop(self):
+        outline = {
+            "character_bible": {
+                "character_id": "primary",
+                "identity": "Chinese teenage girl",
+                "hairstyle": "black twin braids",
+                "clothing": "blue linen jacket",
+            },
+            "supporting_characters": [],
+            "location_bible": {
+                "song_street": {
+                    "location_id": "song_street",
+                    "architecture": "two-storey dark timber shops with grey tiled roofs",
+                    "spatial_layout": "east-west stone road, tea stall on the south side",
+                    "fixed_objects": "red wine banner and stone lion at the west entrance",
+                }
+            },
+            "prop_bible": {
+                "old_tree": {
+                    "prop_id": "old_tree",
+                    "name": "old locust tree",
+                    "design": "thick forked trunk leaning left",
+                    "color": "dark weathered brown",
+                }
+            },
+            "style_bible": {"visual_style": "cinematic photorealism", "aspect_ratio": "16:9"},
+        }
+        scenes = [
+            {
+                "scene_id": 1,
+                "characters_present": ["primary"],
+                "location_id": "song_street",
+                "props_present": ["old_tree"],
+                "current_action": "the girl looks at the tree",
+                "state_before": {"old_tree": "intact"},
+                "state_after": {"old_tree": "intact"},
+            },
+            {
+                "scene_id": 2,
+                "characters_present": ["primary"],
+                "location_id": "song_street",
+                "props_present": ["old_tree"],
+                "current_action": "lightning splits the tree",
+                "state_after": {"old_tree": "trunk split and fallen toward the left side of the street"},
+            },
+        ]
+        first, first_anchors = _locked_continuity_prompt(
+            "wide establishing shot",
+            outline,
+            scenes,
+            0,
+            "16:9",
+            "English",
+        )
+        second, second_anchors = _locked_continuity_prompt(
+            "low-angle action shot",
+            outline,
+            scenes,
+            1,
+            "16:9",
+            "English",
+        )
+        self.assertEqual(first_anchors["location_anchor"], second_anchors["location_anchor"])
+        self.assertEqual(first_anchors["prop_anchor"], second_anchors["prop_anchor"])
+        self.assertIn("LOCATION CONTINUITY LOCK", first)
+        self.assertIn("PROP CONTINUITY LOCK", second)
+        self.assertIn("old_tree: intact", second)
+        self.assertIn("trunk split and fallen", second)
+
+        request = _build_continuity_scene_request(outline, scenes, 1, "Generate one frame.")
+        self.assertNotIn('"next_scene"', request)
+        self.assertIn('"old_tree": "intact"', request)
+        self.assertIn('"location_id": "song_street"', request)
+
+    def test_continuity_outline_reuses_location_id_for_same_location_label(self):
+        outline = {"character_bible": {"identity": "girl"}, "style_bible": {}}
+        scenes = [
+            {"location": "Song dynasty market street", "action": "walks into the street"},
+            {"location": "Song dynasty market street", "action": "turns toward a tea stall"},
+        ]
+        normalized = _normalize_continuity_outline(
+            outline,
+            scenes,
+            "A girl walks along a market street.",
+            2,
+            "English",
+            "16:9",
+        )
+        self.assertEqual(normalized["scenes"][0]["location_id"], normalized["scenes"][1]["location_id"])
+        self.assertEqual(normalized["generation_settings"]["mode"], "online_continuity_v84")
+        self.assertEqual(len(normalized["location_bible"]), 1)
+
+    def test_online_continuity_node_hard_prefixes_api_scene_responses(self):
+        outline = {
+            "title": "Locked street",
+            "source_story": "A girl crosses one street and stops beside the same tree.",
+            "character_bible": {"character_id": "primary", "identity": "girl", "clothing": "blue coat"},
+            "supporting_characters": [],
+            "location_bible": {
+                "street": {
+                    "location_id": "street",
+                    "architecture": "dark timber shops",
+                    "fixed_objects": "one red banner",
+                }
+            },
+            "prop_bible": {"tree": {"prop_id": "tree", "design": "forked old tree"}},
+            "style_bible": {"visual_style": "cinematic realism", "aspect_ratio": "16:9"},
+            "generation_settings": {
+                "mode": "online_continuity_v84",
+                "scene_count": 2,
+                "prompt_language": "English",
+                "aspect_ratio": "16:9",
+            },
+            "scenes": [
+                {
+                    "scene_id": 1,
+                    "characters_present": ["primary"],
+                    "location_id": "street",
+                    "props_present": ["tree"],
+                    "current_action": "walks past the tree",
+                    "state_before": {"tree": "intact"},
+                    "state_after": {"tree": "intact"},
+                },
+                {
+                    "scene_id": 2,
+                    "characters_present": ["primary"],
+                    "location_id": "street",
+                    "props_present": ["tree"],
+                    "current_action": "stops beside the tree",
+                    "state_before": {"tree": "intact"},
+                    "state_after": {"tree": "intact"},
+                },
+            ],
+        }
+
+        class FakeCompletions:
+            def create(self, **kwargs):
+                content = json.dumps(
+                    {
+                        "scene_id": 1,
+                        "prompt": "a cinematic shot",
+                        "negative_prompt": "low quality",
+                    }
+                )
+                return SimpleNamespace(
+                    choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+                )
+
+        class FakeOpenAI:
+            def __init__(self, **kwargs):
+                self.chat = SimpleNamespace(completions=FakeCompletions())
+
+        with patch("node.OpenAI", FakeOpenAI):
+            positive, negative, storyboard_json, count = (
+                RH_MultiSceneContinuityLLM_Node().generate_scene_prompts(
+                    json.dumps(outline),
+                    "http://example.test/v1",
+                    "test-key",
+                    "test-model",
+                    "",
+                    "Generate one frame.",
+                    0.1,
+                    2,
+                )
+            )
+
+        self.assertEqual(count, 2)
+        self.assertTrue(all("LOCATION CONTINUITY LOCK" in prompt for prompt in positive))
+        self.assertTrue(all("dark timber shops" in prompt for prompt in positive))
+        self.assertTrue(all("forked old tree" in prompt for prompt in positive))
+        self.assertTrue(all("changed room layout" in prompt for prompt in negative))
+        storyboard = json.loads(storyboard_json)
+        self.assertEqual(storyboard["shots"][0]["raw_prompt"], "a cinematic shot")
+        self.assertEqual(
+            storyboard["shots"][0]["location_anchor"],
+            storyboard["shots"][1]["location_anchor"],
+        )
+
+    def test_bundled_v84_workflow_uses_continuity_director(self):
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "RH_Krea2_OnlineAPI_Klein_10eros_i2v_v84_continuity_lock.json"
+        )
+        workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+        director = next(node for node in workflow["nodes"] if node["id"] == 2)
+        self.assertEqual(director["type"], "RH_CONFIGURABLE_STORYBOARD_CONTINUITY")
+        self.assertEqual(director["properties"]["Node name for S&R"], director["type"])
+        self.assertEqual(workflow["extra"]["rh_workflow_version"], "krea2-online-v8.4-continuity-lock-klein-10eros-i2v")
+        continuity = workflow["extra"]["rh_character_continuity"]
+        self.assertIn("location_id", continuity["location_lock"])
+        self.assertIn("prop_id", continuity["prop_lock"])
+        self.assertIn("state_before", continuity["state_ledger"])
 
     def test_numbered_scene_save_prefix(self):
         self.assertEqual(

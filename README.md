@@ -43,6 +43,14 @@ Outputs:
 
 The prompt lists can be connected to text-encoding and image-generation nodes. ComfyUI maps downstream execution across list elements.
 
+### RH Storyboard - Continuity Director v84
+
+`RH_CONFIGURABLE_STORYBOARD_CONTINUITY` is the online API variant for recurring-location and recurring-prop consistency. The first pass creates shared `character_bible`, `location_bible`, `prop_bible` and `style_bible` records plus a `state_before -> current_action -> state_after` ledger. The second pass receives only the current shot and its inherited state, not the complete next-scene payload.
+
+After each API response, the node programmatically prefixes the exact character, location, prop, style and state anchors to the final image prompt. A scene writer therefore cannot silently omit or redesign a recurring building, room layout, fixed object or story-critical prop. The bundled example is `workflows/RH_Krea2_OnlineAPI_Klein_10eros_i2v_v84_continuity_lock.json`.
+
+This version improves text-enforced continuity. It still uses Krea2 text-to-image for the base frames; a future location-master image reference stage can provide stronger pixel-level environment consistency.
+
 ### RH Storyboard - Offline Qwen Request
 
 Builds the first-pass planning request for ComfyUI's native `TextGenerate` node. The model analyzes the reference image once, creates one canonical primary-character bible plus supporting-character records, and outlines the requested scenes while separating immutable character traits from mutable scene details. The locked records include identity, age, ethnicity, nationality, skin tone, height, body build, body proportions, facial features, hairstyle, clothing and signature props. Nationality is preserved from the source story and is not inferred from facial appearance alone. The exact source story is also emitted for the second pass. This node performs no network request and has no API inputs.

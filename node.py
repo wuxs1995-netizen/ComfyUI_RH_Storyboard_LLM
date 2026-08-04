@@ -36,6 +36,29 @@ Requirements:
   "continuity_note": "..."
 }"""
 
+DEFAULT_CONTINUITY_DIRECTOR_ROLE = """You are a cinematic storyboard continuity supervisor.
+Create one canonical continuity package before writing any shot outline.
+Character identity, recurring locations, fixed architecture, spatial layout, recurring props, materials and visual style are source-of-truth records.
+Only an explicit state transition in the source story may change a locked asset.
+Return valid JSON only."""
+
+DEFAULT_CONTINUITY_SCENE_ROLE = """You are a production storyboard prompt writer.
+Treat CHARACTER LOCK, LOCATION LOCK, PROP LOCK, STYLE LOCK and CONTINUITY STATE as immutable source-of-truth data.
+Write only the current frozen shot. Do not redesign, rename, recolor, move, add or remove locked assets unless the supplied state transition explicitly requires it.
+Return valid JSON only."""
+
+DEFAULT_CONTINUITY_SCENE_INSTRUCTION = """Generate exactly one production-ready still-image prompt for the supplied scene package.
+
+Requirements:
+1. Preserve every value in character_lock, location_lock, prop_locks and style_lock verbatim in meaning.
+2. Keep the recurring location's architecture, layout, fixed objects, materials and palette identical to other shots using the same location_id.
+3. Keep recurring props identical in design, dimensions, material, color and distinguishing marks.
+4. Show only current_action and its visible resulting state.
+5. continuity_before is already true at the start of the shot. Only visible_state_after may change during this shot.
+6. Do not depict must_not_show, previous actions, future actions, montages or multiple temporal steps.
+7. State shot size, camera angle, composition, subject placement, lighting and depth of field using concrete visual language.
+8. Return valid JSON only with scene_id, prompt, negative_prompt, camera and continuity_note."""
+
 ASPECT_PRESETS = {
     "16:9": (1024, 576),
     "9:16": (576, 1024),
@@ -519,6 +542,263 @@ def _build_scene_request(outline, scenes, scene_index, instruction):
         "next_scene": next_scene,
     }
     return f"{instruction.strip()}\n\nSCENE PACKAGE:\n{_json_text(payload)}"
+
+
+def _list_values(value):
+    if value in (None, "", [], {}):
+        return []
+    if isinstance(value, str):
+        return [item.strip() for item in re.split(r"[,，;；]", value) if item.strip()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [str(value).strip()]
+
+
+def _bible_entries(value, id_keys):
+    """Normalize a single record, keyed mapping or list into canonical records."""
+    if isinstance(value, list):
+        return [dict(item) for item in value if isinstance(item, dict)]
+    if not isinstance(value, dict) or not value:
+        return []
+    if any(key in value for key in id_keys):
+        return [dict(value)]
+
+    entries = []
+    for key, item in value.items():
+        if not isinstance(item, dict):
+            continue
+        entry = dict(item)
+        entry.setdefault(id_keys[0], str(key))
+        entries.append(entry)
+    return entries
+
+
+def _entry_identifier(entry, id_keys, fallback=""):
+    for key in id_keys:
+        identifier = str(entry.get(key, "") or "").strip()
+        if identifier:
+            return identifier
+    return str(fallback or "").strip()
+
+
+def _select_bible_entries(value, requested, id_keys, single_fallback=False):
+    entries = _bible_entries(value, id_keys)
+    requested_keys = {item.casefold() for item in _list_values(requested)}
+    if not requested_keys:
+        return entries[:1] if single_fallback and len(entries) == 1 else []
+
+    selected = []
+    for entry in entries:
+        aliases = {
+            str(entry.get(key, "") or "").strip().casefold()
+            for key in (*id_keys, "name", "role", "location", "prop")
+        }
+        aliases.discard("")
+        if requested_keys & aliases:
+            selected.append(entry)
+    if not selected and single_fallback and len(entries) == 1:
+        selected = entries[:1]
+    return selected
+
+
+def _scene_location_lock(outline, scene):
+    requested = scene.get("location_id") or scene.get("location")
+    selected = _select_bible_entries(
+        outline.get("location_bible", {}),
+        requested,
+        ("location_id", "id"),
+        single_fallback=True,
+    )
+    if selected:
+        return selected[0]
+    fallback = {
+        "location_id": str(scene.get("location_id", "") or "").strip(),
+        "description": str(scene.get("location", "") or "").strip(),
+    }
+    return {key: value for key, value in fallback.items() if value}
+
+
+def _scene_prop_locks(outline, scene):
+    requested = (
+        scene.get("props_present")
+        or scene.get("prop_ids")
+        or scene.get("recurring_props")
+        or []
+    )
+    return _select_bible_entries(
+        outline.get("prop_bible", {}),
+        requested,
+        ("prop_id", "id"),
+    )
+
+
+def _anchor_value(value):
+    if value in (None, "", [], {}):
+        return ""
+    if isinstance(value, dict):
+        return _bible_anchor(value)
+    if isinstance(value, (list, tuple)):
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    return str(value).strip()
+
+
+def _merge_negative_prompt(value):
+    continuity_negative = (
+        "inconsistent character, changed face, changed hairstyle, changed clothing, "
+        "inconsistent architecture, changed room layout, changed fixed objects, "
+        "changed prop design, changed prop color, missing recurring prop, duplicate recurring prop"
+    )
+    raw = str(value or "").strip().strip(",")
+    return f"{raw}, {continuity_negative}" if raw else continuity_negative
+
+
+def _locked_continuity_prompt(raw_prompt, outline, scenes, scene_index, aspect_ratio, prompt_language):
+    """Compile exact character, location, prop and state locks into one final prompt."""
+    scene = scenes[scene_index]
+    previous_scene = scenes[scene_index - 1] if scene_index > 0 else None
+    selected_characters = _scene_character_lock(
+        outline.get("character_bible", {}),
+        outline.get("supporting_characters", []),
+        scene,
+    )
+    location_lock = _scene_location_lock(outline, scene)
+    prop_locks = _scene_prop_locks(outline, scene)
+    before = scene.get("state_before")
+    if before in (None, "", [], {}) and previous_scene:
+        before = previous_scene.get("state_after", previous_scene.get("continuity", ""))
+    if before in (None, "", [], {}):
+        before = "story opening state"
+    after = scene.get("state_after", scene.get("continuity", ""))
+    current_action = scene.get("current_action", scene.get("action", ""))
+
+    character_anchor = _bible_anchor(selected_characters)
+    location_anchor = _bible_anchor(location_lock)
+    prop_anchor = _anchor_value(prop_locks)
+    style_anchor = _bible_anchor(outline.get("style_bible", {}))
+    before_anchor = _anchor_value(before)
+    after_anchor = _anchor_value(after)
+    scene_label = f"SCENE {scene_index + 1:02d}/{len(scenes):02d}"
+
+    parts = [str(aspect_ratio).strip(), scene_label]
+    if character_anchor:
+        parts.append(f"CHARACTER CONTINUITY LOCK (copy exactly; never redesign): {character_anchor}")
+    if location_anchor:
+        parts.append(f"LOCATION CONTINUITY LOCK (same location_id means identical place): {location_anchor}")
+    if prop_anchor:
+        parts.append(f"PROP CONTINUITY LOCK (same prop_id means identical object): {prop_anchor}")
+    if style_anchor:
+        parts.append(f"STYLE LOCK: {style_anchor}")
+    parts.append(f"CONTINUITY STATE BEFORE: {before_anchor}")
+    if after_anchor:
+        parts.append(f"ONLY ALLOWED STATE AFTER THIS SHOT: {after_anchor}")
+    if current_action:
+        parts.append(f"CURRENT ACTION ONLY: {_anchor_value(current_action)}")
+    parts.append(f"CURRENT SHOT: {str(raw_prompt or '').strip()}")
+    parts.append("Do not alter any locked identity, architecture, layout, material, color or recurring prop unless explicitly allowed by the state transition.")
+
+    return ", ".join(part for part in parts if part), {
+        "character_anchor": character_anchor,
+        "location_anchor": location_anchor,
+        "prop_anchor": prop_anchor,
+        "style_anchor": style_anchor,
+        "continuity_before": before,
+        "continuity_after": after,
+        "prompt_language": str(prompt_language),
+    }
+
+
+def _build_continuity_scene_request(outline, scenes, scene_index, instruction):
+    scene = scenes[scene_index]
+    previous_scene = scenes[scene_index - 1] if scene_index > 0 else None
+    continuity_before = scene.get("state_before")
+    if continuity_before in (None, "", [], {}) and previous_scene:
+        continuity_before = previous_scene.get("state_after", previous_scene.get("continuity", ""))
+    if continuity_before in (None, "", [], {}):
+        continuity_before = "story opening state"
+
+    payload = {
+        "source_story": outline.get("source_story", ""),
+        "story_fact": scene.get("story_fact", ""),
+        "shot_number": scene_index + 1,
+        "total_shots": len(scenes),
+        "character_lock": _scene_character_lock(
+            outline.get("character_bible", {}),
+            outline.get("supporting_characters", []),
+            scene,
+        ),
+        "location_lock": _scene_location_lock(outline, scene),
+        "prop_locks": _scene_prop_locks(outline, scene),
+        "style_lock": outline.get("style_bible", {}),
+        "continuity_before": continuity_before,
+        "current_action": scene.get("current_action", scene.get("action", "")),
+        "visible_state_after": scene.get("state_after", scene.get("continuity", "")),
+        "must_not_show": scene.get("must_not_show", ""),
+        "current_scene": scene,
+    }
+    return f"{instruction.strip()}\n\nSCENE PACKAGE:\n{_json_text(payload)}"
+
+
+def _normalize_continuity_outline(outline, scenes, story, scene_count, prompt_language, aspect_ratio):
+    """Repair small schema omissions without letting later scene calls redesign shared assets."""
+    location_entries = _bible_entries(outline.get("location_bible", {}), ("location_id", "id"))
+    location_map = {}
+    for index, entry in enumerate(location_entries, start=1):
+        identifier = _entry_identifier(entry, ("location_id", "id"), f"location_{index:02d}")
+        entry["location_id"] = identifier
+        location_map[identifier] = entry
+
+    location_ids_by_label = {
+        str(entry.get("name") or entry.get("location") or entry.get("description") or "").strip().casefold(): identifier
+        for identifier, entry in location_map.items()
+        if str(entry.get("name") or entry.get("location") or entry.get("description") or "").strip()
+    }
+    previous_state = "story opening state"
+    for index, scene in enumerate(scenes, start=1):
+        scene["scene_id"] = index
+        location_label = str(scene.get("location", "") or "").strip()
+        location_id = str(scene.get("location_id", "") or "").strip()
+        if not location_id and location_label:
+            location_id = location_ids_by_label.get(location_label.casefold(), "")
+        if not location_id:
+            location_id = f"location_{index:02d}"
+        scene["location_id"] = location_id
+        if location_id not in location_map:
+            location_map[location_id] = {
+                "location_id": location_id,
+                "description": location_label or f"Location for scene {index}",
+            }
+            if location_label:
+                location_ids_by_label[location_label.casefold()] = location_id
+
+        scene.setdefault("story_fact", scene.get("action", scene.get("current_action", "")))
+        scene.setdefault("characters_present", ["primary"])
+        scene.setdefault("props_present", [])
+        scene.setdefault("current_action", scene.get("action", ""))
+        if scene.get("state_before") in (None, "", [], {}):
+            scene["state_before"] = previous_state
+        if scene.get("state_after") in (None, "", [], {}):
+            scene["state_after"] = scene.get("continuity", scene["state_before"])
+        scene.setdefault("must_not_show", "")
+        previous_state = scene["state_after"]
+
+    prop_entries = _bible_entries(outline.get("prop_bible", {}), ("prop_id", "id"))
+    prop_map = {}
+    for index, entry in enumerate(prop_entries, start=1):
+        identifier = _entry_identifier(entry, ("prop_id", "id"), f"prop_{index:02d}")
+        entry["prop_id"] = identifier
+        prop_map[identifier] = entry
+
+    outline["source_story"] = str(story).strip()
+    outline["location_bible"] = location_map
+    outline["prop_bible"] = prop_map
+    outline["scenes"] = scenes
+    outline["generation_settings"] = {
+        "mode": "online_continuity_v84",
+        "scene_count": int(scene_count),
+        "prompt_language": str(prompt_language),
+        "aspect_ratio": str(aspect_ratio),
+    }
+    return outline
 
 
 def _completion_text(completion):
@@ -1350,6 +1630,129 @@ class RH_MultiSceneLLM_Node:
         return positive, negative, _json_text(storyboard), len(scenes)
 
 
+class RH_MultiSceneContinuityLLM_Node:
+    """Generate independent scene prompts, then enforce shared continuity in code."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "outline_json": ("STRING", {"forceInput": True}),
+                "api_baseurl": ("STRING", {"multiline": False, "default": "http://127.0.0.1:8000/v1"}),
+                "api_key": ("STRING", {"default": ""}),
+                "model": ("STRING", {"default": ""}),
+                "role": ("STRING", {"multiline": True, "default": DEFAULT_CONTINUITY_SCENE_ROLE}),
+                "instruction": (
+                    "STRING",
+                    {"multiline": True, "default": DEFAULT_CONTINUITY_SCENE_INSTRUCTION},
+                ),
+                "temperature": ("FLOAT", {"default": 0.25, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "max_workers": ("INT", {"default": 4, "min": 1, "max": 16}),
+            },
+            "optional": {
+                "ref_image": ("IMAGE",),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "INT")
+    RETURN_NAMES = ("positive_prompts", "negative_prompts", "storyboard_json", "scene_count")
+    OUTPUT_IS_LIST = (True, True, False, False)
+    FUNCTION = "generate_scene_prompts"
+    CATEGORY = "Runninghub/Storyboard/Continuity"
+
+    def generate_scene_prompts(
+        self,
+        outline_json,
+        api_baseurl,
+        api_key,
+        model,
+        role,
+        instruction,
+        temperature,
+        max_workers,
+        ref_image=None,
+    ):
+        outline, scenes = _parse_outline(outline_json)
+        image_b64 = encode_image_b64(ref_image) if ref_image is not None else None
+        additional_role = str(role or "").strip()
+        system_role = DEFAULT_CONTINUITY_SCENE_ROLE
+        if additional_role and additional_role != DEFAULT_CONTINUITY_SCENE_ROLE:
+            system_role += f"\n\nAdditional production rules:\n{additional_role}"
+
+        settings = outline.get("generation_settings", {})
+        aspect_ratio = str(settings.get("aspect_ratio", "") or "")
+        prompt_language = str(settings.get("prompt_language", "") or "")
+
+        def request_scene(index):
+            scene = scenes[index]
+            request_text = _build_continuity_scene_request(outline, scenes, index, instruction)
+            if image_b64:
+                user_content = [
+                    {"type": "text", "text": request_text},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"},
+                    },
+                ]
+            else:
+                user_content = request_text
+
+            client = OpenAI(api_key=api_key, base_url=api_baseurl)
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_role},
+                    {"role": "user", "content": user_content},
+                ],
+                temperature=temperature,
+            )
+            raw = _completion_text(completion)
+            try:
+                parsed = _extract_json_text(raw)
+            except ValueError:
+                parsed = {"scene_id": scene.get("scene_id", index + 1), "prompt": raw}
+
+            raw_prompt = str(parsed.get("prompt", raw) or raw).strip()
+            locked_prompt, anchors = _locked_continuity_prompt(
+                raw_prompt,
+                outline,
+                scenes,
+                index,
+                aspect_ratio,
+                prompt_language,
+            )
+            parsed["scene_id"] = scene.get("scene_id", index + 1)
+            parsed["raw_prompt"] = raw_prompt
+            parsed["prompt"] = locked_prompt
+            parsed["negative_prompt"] = _merge_negative_prompt(parsed.get("negative_prompt", ""))
+            parsed["source_scene"] = scene
+            parsed.update(anchors)
+            return index, parsed
+
+        ordered = [None] * len(scenes)
+        worker_count = min(max(1, int(max_workers)), len(scenes))
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            futures = [pool.submit(request_scene, index) for index in range(len(scenes))]
+            for future in as_completed(futures):
+                index, result = future.result()
+                ordered[index] = result
+
+        positive = [str(item.get("prompt", "")) for item in ordered]
+        negative = [str(item.get("negative_prompt", "")) for item in ordered]
+        storyboard = {
+            "title": outline.get("title", ""),
+            "source_story": outline.get("source_story", ""),
+            "character_bible": outline.get("character_bible", {}),
+            "supporting_characters": outline.get("supporting_characters", []),
+            "location_bible": outline.get("location_bible", {}),
+            "prop_bible": outline.get("prop_bible", {}),
+            "style_bible": outline.get("style_bible", {}),
+            "generation_settings": settings,
+            "shots": ordered,
+        }
+        return positive, negative, _json_text(storyboard), len(scenes)
+
+
 class RH_ConfigurableStoryboard_Node:
     """Generate a configurable outline and fan out one prompt request per scene."""
 
@@ -1520,6 +1923,249 @@ class RH_ConfigurableStoryboard_Node:
             prompt_temperature,
             max_workers,
             ref_image,
+        )
+        width, height = ASPECT_PRESETS[aspect_ratio]
+        return (
+            outline_json,
+            storyboard_json,
+            positive,
+            negative,
+            actual_count,
+            prompt_language,
+            aspect_ratio,
+            width,
+            height,
+        )
+
+
+class RH_ConfigurableStoryboardContinuity_Node:
+    """Online two-pass director with code-enforced location, prop and state continuity."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "api_baseurl": ("STRING", {"multiline": False, "default": "http://127.0.0.1:8000/v1"}),
+                "api_key": ("STRING", {"default": ""}),
+                "model": ("STRING", {"default": ""}),
+                "story": ("STRING", {"multiline": True, "default": "A character experiences a visual story."}),
+                "scene_count": ("INT", {"default": 8, "min": 1, "max": 12}),
+                "prompt_language": (["中文", "English"], {"default": "中文"}),
+                "aspect_ratio": (list(ASPECT_PRESETS.keys()), {"default": "16:9"}),
+                "director_role": (
+                    "STRING",
+                    {"multiline": True, "default": DEFAULT_CONTINUITY_DIRECTOR_ROLE},
+                ),
+                "prompt_writer_role": (
+                    "STRING",
+                    {"multiline": True, "default": DEFAULT_CONTINUITY_SCENE_ROLE},
+                ),
+                "outline_temperature": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "prompt_temperature": ("FLOAT", {"default": 0.25, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "max_workers": ("INT", {"default": 4, "min": 1, "max": 12}),
+            },
+            "optional": {
+                "ref_image": ("IMAGE",),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "INT", "STRING", "STRING", "INT", "INT")
+    RETURN_NAMES = (
+        "outline_json",
+        "storyboard_json",
+        "positive_prompts",
+        "negative_prompts",
+        "scene_count",
+        "prompt_language",
+        "aspect_ratio",
+        "width",
+        "height",
+    )
+    OUTPUT_IS_LIST = (False, False, True, True, False, False, False, False, False)
+    FUNCTION = "generate_storyboard"
+    CATEGORY = "Runninghub/Storyboard/Continuity"
+
+    def _director_request(self, story, scene_count, prompt_language, aspect_ratio):
+        scene_shape = ",\n    ".join(
+            f'{{"scene_id": {scene_number}, "story_fact": "", "characters_present": ["primary"], '
+            '"location_id": "", "props_present": [], "state_before": "", '
+            '"current_action": "", "state_after": "", "must_not_show": "", '
+            '"shot_type": "", "camera": "", "emotion": "", "lighting": ""}'
+            for scene_number in range(1, int(scene_count) + 1)
+        )
+        language_rule = (
+            "Every descriptive value and final image prompt must use English."
+            if str(prompt_language).strip().lower() == "english"
+            else "Every descriptive value and final image prompt must use Simplified Chinese. Stable IDs may remain ASCII."
+        )
+        return f"""SOURCE STORY - the only authoritative source of characters, actions, relationships and outcomes:
+{str(story).strip()}
+
+Create exactly {scene_count} progressive storyboard shots for aspect ratio {aspect_ratio}.
+{language_rule}
+
+CONTINUITY REQUIREMENTS:
+1. Create one canonical character_bible for the protagonist and supporting_characters for every recurring or action-relevant person.
+2. Create location_bible as a mapping keyed by stable location_id. A recurring place must reuse the same location_id in every shot.
+3. Every location record must lock name, architecture, spatial_layout, foreground, midground, background, fixed_objects, materials, palette, base_lighting and distinguishing_marks.
+4. Create prop_bible as a mapping keyed by stable prop_id for every recurring or story-critical object.
+5. Every prop record must lock name, design, dimensions, material, color, condition, distinguishing_marks and default_location.
+6. style_bible must lock visual_style, rendering, color_palette, lens_language, texture and aspect_ratio.
+7. Each scene must reference location_id and props_present IDs instead of redesigning those assets in prose. The same prop_id always means the identical object.
+8. state_before and state_after form a continuity ledger. Copy the previous shot's state_after into the next shot's state_before unless the story changes location or time.
+9. A locked asset may change only when current_action explicitly causes the change. Preserve all other attributes.
+10. Each current_action contains one visible action or held reaction. must_not_show lists events reserved for other shots.
+11. Use the optional reference image only to describe character identity and appearance. Do not adopt its pose or background.
+12. Return valid JSON only, with exactly {scene_count} scenes numbered 1 through {scene_count}.
+
+Return this shape:
+{{
+  "title": "",
+  "character_bible": {{"character_id": "primary", "identity": "", "age": "", "ethnicity": "", "nationality": "", "skin_tone": "", "height": "", "body_build": "", "body_proportions": "", "facial_features": "", "hairstyle": "", "hair_accessories": "", "clothing": "", "signature_props": ""}},
+  "supporting_characters": [],
+  "location_bible": {{
+    "location_01": {{"location_id": "location_01", "name": "", "architecture": "", "spatial_layout": "", "foreground": "", "midground": "", "background": "", "fixed_objects": "", "materials": "", "palette": "", "base_lighting": "", "distinguishing_marks": ""}}
+  }},
+  "prop_bible": {{
+    "prop_01": {{"prop_id": "prop_01", "name": "", "design": "", "dimensions": "", "material": "", "color": "", "condition": "", "distinguishing_marks": "", "default_location": ""}}
+  }},
+  "style_bible": {{"visual_style": "", "rendering": "", "color_palette": "", "lens_language": "", "texture": "", "aspect_ratio": "{aspect_ratio}"}},
+  "scenes": [
+    {scene_shape}
+  ]
+}}"""
+
+    def _call_director(self, client, model, role, request_text, temperature, image_b64):
+        additional_role = str(role or "").strip()
+        if "MUTABLE scene variables" in additional_role and "Location, action, emotion" in additional_role:
+            additional_role = ""
+        system_role = DEFAULT_CONTINUITY_DIRECTOR_ROLE
+        if additional_role and additional_role != DEFAULT_CONTINUITY_DIRECTOR_ROLE:
+            system_role += f"\n\nAdditional director rules:\n{additional_role}"
+        if image_b64:
+            user_content = [
+                {"type": "text", "text": request_text},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+            ]
+        else:
+            user_content = request_text
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_role},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=temperature,
+        )
+        return _completion_text(completion)
+
+    def generate_storyboard(
+        self,
+        api_baseurl,
+        api_key,
+        model,
+        story,
+        scene_count,
+        prompt_language,
+        aspect_ratio,
+        director_role,
+        prompt_writer_role,
+        outline_temperature,
+        prompt_temperature,
+        max_workers,
+        ref_image=None,
+    ):
+        requested_count = int(scene_count)
+        client = OpenAI(api_key=api_key, base_url=api_baseurl)
+        image_b64 = encode_image_b64(ref_image) if ref_image is not None else None
+        request_text = self._director_request(
+            story,
+            requested_count,
+            prompt_language,
+            aspect_ratio,
+        )
+        raw_outline = self._call_director(
+            client,
+            model,
+            director_role,
+            request_text,
+            outline_temperature,
+            image_b64,
+        )
+        outline = _extract_json_text(raw_outline)
+        scenes = outline.get("scenes")
+
+        if not isinstance(scenes, list) or len(scenes) != requested_count:
+            actual = len(scenes) if isinstance(scenes, list) else 0
+            repair = f"""The previous continuity outline contained {actual} scenes, but exactly {requested_count} are required.
+Preserve the same source story, character_bible, location_bible, prop_bible and style_bible.
+Return one complete valid JSON object with exactly {requested_count} scenes. Return JSON only.
+
+Previous response:
+{raw_outline}"""
+            raw_outline = self._call_director(
+                client,
+                model,
+                director_role,
+                repair,
+                0.1,
+                image_b64,
+            )
+            outline = _extract_json_text(raw_outline)
+            scenes = outline.get("scenes")
+
+        if not isinstance(scenes, list) or len(scenes) < requested_count:
+            actual = len(scenes) if isinstance(scenes, list) else 0
+            raise ValueError(f"Continuity director returned {actual} scenes; expected exactly {requested_count}.")
+        if len(scenes) > requested_count:
+            scenes = scenes[:requested_count]
+        for index, scene in enumerate(scenes, start=1):
+            if not isinstance(scene, dict):
+                raise ValueError(f"scenes[{index - 1}] must be a JSON object.")
+
+        character_bible = outline.get("character_bible")
+        if not _bible_anchor(character_bible):
+            raise ValueError("Continuity director did not return a usable character_bible.")
+        supporting_characters = outline.get("supporting_characters")
+        if not isinstance(supporting_characters, list):
+            outline["supporting_characters"] = []
+        style_bible = outline.get("style_bible")
+        if not isinstance(style_bible, dict):
+            style_bible = {}
+            outline["style_bible"] = style_bible
+        style_bible["aspect_ratio"] = str(aspect_ratio)
+
+        outline = _normalize_continuity_outline(
+            outline,
+            scenes,
+            story,
+            requested_count,
+            prompt_language,
+            aspect_ratio,
+        )
+        outline_json = _json_text(outline)
+        language_instruction = (
+            "Write every prompt entirely in English."
+            if str(prompt_language).strip().lower() == "english"
+            else "Write every prompt entirely in Simplified Chinese."
+        )
+        instruction = (
+            DEFAULT_CONTINUITY_SCENE_INSTRUCTION
+            + f"\n9. {language_instruction}"
+            + f"\n10. Compose every frame for aspect ratio {aspect_ratio}."
+        )
+        positive, negative, storyboard_json, actual_count = (
+            RH_MultiSceneContinuityLLM_Node().generate_scene_prompts(
+                outline_json,
+                api_baseurl,
+                api_key,
+                model,
+                prompt_writer_role,
+                instruction,
+                prompt_temperature,
+                max_workers,
+                ref_image,
+            )
         )
         width, height = ASPECT_PRESETS[aspect_ratio]
         return (
