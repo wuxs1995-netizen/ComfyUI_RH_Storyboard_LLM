@@ -528,6 +528,353 @@ def parse_offline_storyboard_text(generated_text, scene_count, default_negative_
     return positive, negative, storyboard
 
 
+REF2V_REFERENCE_MODES = (
+    "one_picture_per_shot",
+    "first_picture_for_all_shots",
+    "text_only",
+)
+
+
+def _ref2v_first(value, default=None):
+    if isinstance(value, (list, tuple)):
+        return value[0] if value else default
+    return value if value is not None else default
+
+
+def _ref2v_scene_prompt(scene):
+    if isinstance(scene, str):
+        return scene.strip()
+    if not isinstance(scene, dict):
+        return ""
+
+    for key in ("raw_prompt", *OFFLINE_PROMPT_KEYS, "description", "text"):
+        value = scene.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    source_scene = scene.get("source_scene")
+    if isinstance(source_scene, dict):
+        prompt, _, _, _ = _offline_prompt_from_scene(source_scene)
+        if prompt:
+            return prompt
+
+    prompt, _, _, _ = _offline_prompt_from_scene(scene)
+    return prompt
+
+
+def _ref2v_shot_blocks(text):
+    """Split common [Shot N], Scene N, 分镜 N and numbered multi-shot text."""
+    raw = str(text or "").replace("\r\n", "\n").strip()
+    if not raw:
+        return []
+
+    marker = re.compile(
+        r"(?im)^[ \t]*(?:"
+        r"\[(?:shot|scene|分镜|镜头)\s*\d+\]"
+        r"|(?:shot|scene|分镜|镜头)\s*\d+\s*[:：.、)）-]"
+        r"|\d+\s*[.、:：)）]"
+        r")\s*"
+    )
+    matches = list(marker.finditer(raw))
+    if matches:
+        blocks = []
+        for index, match in enumerate(matches):
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(raw)
+            block = raw[match.end():end].strip()
+            if block:
+                blocks.append(block)
+        if blocks:
+            return blocks
+
+    paragraphs = [item.strip() for item in re.split(r"\n\s*\n+", raw) if item.strip()]
+    if 1 < len(paragraphs) <= 24 and all(len(item) >= 8 for item in paragraphs):
+        return paragraphs
+    return [raw]
+
+
+def _ref2v_parse_source(value, split_plain_text=True):
+    metadata = {}
+    shots = []
+    parsed = value if isinstance(value, (dict, list)) else _extract_first_json_value(value)
+
+    if isinstance(parsed, dict):
+        has_storyboard_shape = any(
+            isinstance(parsed.get(key), list) for key in ("shots", "scenes", "storyboard")
+        )
+        has_single_shot_shape = any(
+            isinstance(parsed.get(key), str) and parsed.get(key).strip()
+            for key in ("raw_prompt", *OFFLINE_PROMPT_KEYS, "description", "text")
+        )
+        if has_storyboard_shape or has_single_shot_shape:
+            metadata = {
+                "title": parsed.get("title", ""),
+                "character_bible": parsed.get("character_bible", {}),
+                "supporting_characters": parsed.get("supporting_characters", []),
+                "style_bible": parsed.get("style_bible", {}),
+            }
+            values = None
+            for key in ("shots", "scenes", "storyboard"):
+                if isinstance(parsed.get(key), list):
+                    values = parsed[key]
+                    break
+            values = values if values is not None else [parsed]
+            for index, scene in enumerate(values, start=1):
+                prompt = _ref2v_scene_prompt(scene)
+                if not prompt:
+                    continue
+                shot = dict(scene) if isinstance(scene, dict) else {"prompt": prompt}
+                shot["prompt"] = prompt
+                shot.setdefault("scene_id", index)
+                shots.append(shot)
+            return shots, metadata
+
+    if isinstance(parsed, list):
+        for index, scene in enumerate(parsed, start=1):
+            prompt = _ref2v_scene_prompt(scene)
+            if not prompt:
+                continue
+            shot = dict(scene) if isinstance(scene, dict) else {"prompt": prompt}
+            shot["prompt"] = prompt
+            shot.setdefault("scene_id", index)
+            shots.append(shot)
+        if shots:
+            return shots, metadata
+
+    blocks = _ref2v_shot_blocks(value) if split_plain_text else [str(value or "").strip()]
+    for index, prompt in enumerate(blocks, start=1):
+        if prompt:
+            shots.append({"scene_id": index, "prompt": prompt})
+    return shots, metadata
+
+
+def _ref2v_collect_shots(storyboard_texts):
+    values = (
+        list(storyboard_texts)
+        if isinstance(storyboard_texts, (list, tuple))
+        else [storyboard_texts]
+    )
+    values = [value for value in values if value not in (None, "")]
+    if not values:
+        raise ValueError("REF2V storyboard input is empty.")
+
+    all_shots = []
+    metadata = {}
+    split_plain_text = len(values) == 1
+    for value in values:
+        shots, item_metadata = _ref2v_parse_source(value, split_plain_text=split_plain_text)
+        all_shots.extend(shots)
+        for key, item in item_metadata.items():
+            if item not in (None, "", [], {}) and metadata.get(key) in (None, "", [], {}):
+                metadata[key] = item
+
+    if not all_shots:
+        raise ValueError("REF2V could not find any usable storyboard shots.")
+    if len(all_shots) > 24:
+        raise ValueError(f"REF2V supports at most 24 shots per prompt; received {len(all_shots)}.")
+    for index, shot in enumerate(all_shots, start=1):
+        shot["scene_id"] = index
+    return all_shots, metadata
+
+
+def _ref2v_subject_entries(metadata):
+    character_bible = metadata.get("character_bible", {}) if isinstance(metadata, dict) else {}
+    supporting = metadata.get("supporting_characters", []) if isinstance(metadata, dict) else []
+    entries = []
+
+    if isinstance(character_bible, dict) and character_bible:
+        nested = [value for value in character_bible.values() if isinstance(value, dict)]
+        if nested and len(nested) == len(character_bible):
+            entries.extend(dict(value) for value in nested)
+        else:
+            entries.append(dict(character_bible))
+    if isinstance(supporting, list):
+        entries.extend(dict(value) for value in supporting if isinstance(value, dict))
+    elif isinstance(supporting, dict):
+        entries.extend(dict(value) for value in supporting.values() if isinstance(value, dict))
+
+    unique = []
+    seen = set()
+    for index, entry in enumerate(entries, start=1):
+        identifier = str(
+            entry.get("character_id") or entry.get("id") or entry.get("name") or index
+        ).strip().casefold()
+        if identifier in seen:
+            continue
+        seen.add(identifier)
+        unique.append(entry)
+    return unique
+
+
+def _ref2v_timestamp(seconds):
+    milliseconds = max(0, int(round(float(seconds) * 1000.0)))
+    minutes, remainder = divmod(milliseconds, 60_000)
+    whole_seconds, millis = divmod(remainder, 1000)
+    return f"{minutes:02d}:{whole_seconds:02d}.{millis:03d}"
+
+
+def _ref2v_join_labels(labels):
+    if not labels:
+        return ""
+    if len(labels) == 1:
+        return labels[0]
+    if len(labels) == 2:
+        return f"{labels[0]} and {labels[1]}"
+    return f"{', '.join(labels[:-1])}, and {labels[-1]}"
+
+
+def build_ref2v_prompt_fields(
+    storyboard_texts,
+    seconds_per_shot=4.5,
+    start_time_seconds=0.0,
+    reference_mode="one_picture_per_shot",
+    subject_definitions_override="",
+    overall_soundscape="",
+    non_diegetic_music="N/A",
+):
+    """Compile storyboard prompts into the six REF2V2a prompt-builder sections."""
+    shots, metadata = _ref2v_collect_shots(storyboard_texts)
+    shot_count = len(shots)
+    mode = str(reference_mode or "one_picture_per_shot").strip()
+    if mode not in REF2V_REFERENCE_MODES:
+        mode = "one_picture_per_shot"
+
+    subjects = _ref2v_subject_entries(metadata)
+    subject_labels = [f"<Subject {index}>" for index in range(1, max(1, len(subjects)) + 1)]
+    shot_labels = [f"[Shot {index}]" for index in range(1, shot_count + 1)]
+    picture_labels = [f"<Picture {index}>" for index in range(1, shot_count + 1)]
+
+    override = str(subject_definitions_override or "").strip()
+    if override:
+        subject_definitions = override
+    else:
+        definitions = []
+        if subjects:
+            for index, subject in enumerate(subjects, start=1):
+                anchor = _bible_anchor(subject)
+                picture_clause = " as established by <Picture 1>" if mode != "text_only" else ""
+                definitions.append(
+                    f"<Subject {index}> is the recurring character{picture_clause}: {anchor}."
+                )
+        else:
+            picture_clause = " as established by <Picture 1>" if mode != "text_only" else ""
+            definitions.append(
+                f"<Subject 1> is the main recurring subject{picture_clause}; preserve identity, "
+                "appearance, wardrobe, body proportions, and distinguishing features across all shots."
+            )
+
+        if mode == "one_picture_per_shot":
+            definitions.extend(
+                f"<Picture {index}> is the visual reference and opening-frame anchor for [Shot {index}]."
+                for index in range(1, shot_count + 1)
+            )
+        elif mode == "first_picture_for_all_shots":
+            definitions.append(
+                "<Picture 1> is the opening-frame anchor for [Shot 1] and the identity/visual "
+                "continuity reference for every later shot."
+            )
+        subject_definitions = "\n".join(definitions)
+
+    sequence = (
+        shot_labels[0]
+        if shot_count == 1
+        else f"{shot_labels[0]} through {shot_labels[-1]}"
+    )
+    subject_sequence = _ref2v_join_labels(subject_labels)
+    if mode == "one_picture_per_shot":
+        picture_sequence = _ref2v_join_labels(picture_labels)
+        summary = (
+            f"[multi-shot reference generation] Use {picture_sequence} as sequential visual anchors. "
+            f"Keep {subject_sequence} consistent and follow {sequence} in chronological order."
+        )
+    elif mode == "first_picture_for_all_shots":
+        summary = (
+            f"[multi-shot reference generation] Use <Picture 1> as the opening and identity reference. "
+            f"Keep {subject_sequence} consistent and follow {sequence} in chronological order."
+        )
+    else:
+        summary = (
+            f"[multi-shot generation] Keep {subject_sequence} consistent and follow {sequence} "
+            "in chronological order."
+        )
+
+    retention_lines = []
+    all_shot_refs = ", ".join(shot_labels)
+    for label in subject_labels:
+        retention_lines.append(
+            f"{label} (appears in {all_shot_refs}): fully_preserved — identity, face, hairstyle, "
+            "body proportions, wardrobe, and distinguishing features remain consistent."
+        )
+    if mode == "one_picture_per_shot":
+        retention_lines.extend(
+            f"<Picture {index}> ([Shot {index}] opening frame): fully_preserved — composition, "
+            "subject placement, environment, lighting, and visible design details anchor this shot."
+            for index in range(1, shot_count + 1)
+        )
+    elif mode == "first_picture_for_all_shots":
+        retention_lines.append(
+            "<Picture 1> ([Shot 1] opening frame): fully_preserved — identity and visible design "
+            "details carry through later shots; later actions and compositions follow their own text."
+        )
+    if shot_count > 1:
+        retention_lines.append(
+            f"{sequence}: fully_preserved — keep chronological order, spatial logic, screen direction, "
+            "and visible state changes continuous between adjacent shots."
+        )
+    retention_analysis = "\n".join(retention_lines)
+
+    duration = max(0.001, float(seconds_per_shot))
+    start = max(0.0, float(start_time_seconds))
+    detailed_lines = []
+    for index, shot in enumerate(shots, start=1):
+        timestamp = _ref2v_timestamp(start + ((index - 1) * duration))
+        prompt = str(shot.get("prompt", "") or "").strip()
+        if mode == "one_picture_per_shot":
+            reference_instruction = f"Use <Picture {index}> as this shot's opening-frame anchor. "
+        elif mode == "first_picture_for_all_shots":
+            reference_instruction = (
+                "Use <Picture 1> as the opening-frame anchor. "
+                if index == 1
+                else "Retain identity and visible design details from <Picture 1>; do not copy its pose or background unless requested. "
+            )
+        else:
+            reference_instruction = ""
+        transition_instruction = (
+            ""
+            if index == 1
+            else f"Continue naturally from [Shot {index - 1}] while preserving recurring subjects and state. "
+        )
+        detailed_lines.append(
+            f"[Shot {index}] At {timestamp}, {reference_instruction}{transition_instruction}{prompt}".strip()
+        )
+    detailed_description = "\n".join(detailed_lines)
+
+    soundscape = str(overall_soundscape or "").strip() or (
+        "Match diegetic ambience and sound effects to each visible shot; keep spatial perspective, "
+        "dialogue, movement, and environmental transitions synchronized across the sequence."
+    )
+    music = str(non_diegetic_music or "").strip() or "N/A"
+    full_prompt = "\n\n".join(
+        (
+            f"subject_definitions:\n{subject_definitions}",
+            f"summary:\n{summary}",
+            f"retention_analysis:\n{retention_analysis}",
+            f"detailed_description:\n{detailed_description}",
+            f"overall_soundscape:\n{soundscape}",
+            f"non_diegetic_music:\n{music}",
+        )
+    )
+    return (
+        full_prompt,
+        subject_definitions,
+        summary,
+        retention_analysis,
+        detailed_description,
+        soundscape,
+        music,
+        shot_count,
+    )
+
+
 def _build_scene_request(outline, scenes, scene_index, instruction):
     scene = scenes[scene_index]
     previous_scene = scenes[scene_index - 1] if scene_index > 0 else None
@@ -1039,6 +1386,84 @@ class RH_StoryboardPromptSelector_Node:
             _json_text(shot),
             len(shots),
             True,
+        )
+
+
+class RH_REF2VStoryboardPrompt_Node:
+    """Convert several storyboard prompts into REF2V2a prompt-builder sections."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "storyboard_texts": ("STRING", {"forceInput": True}),
+                "seconds_per_shot": (
+                    "FLOAT",
+                    {"default": 4.5, "min": 0.1, "max": 60.0, "step": 0.1},
+                ),
+                "start_time_seconds": (
+                    "FLOAT",
+                    {"default": 0.0, "min": 0.0, "max": 3600.0, "step": 0.1},
+                ),
+                "reference_mode": (REF2V_REFERENCE_MODES, {"default": "one_picture_per_shot"}),
+                "overall_soundscape": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": (
+                            "Match diegetic ambience and sound effects to each visible shot; keep spatial "
+                            "perspective and transitions synchronized across the sequence."
+                        ),
+                    },
+                ),
+                "non_diegetic_music": (
+                    "STRING",
+                    {"multiline": True, "default": "N/A"},
+                ),
+            },
+            "optional": {
+                "subject_definitions_override": (
+                    "STRING",
+                    {"multiline": True, "default": ""},
+                ),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "INT")
+    RETURN_NAMES = (
+        "ref2v_prompt",
+        "subject_definitions",
+        "summary",
+        "retention_analysis",
+        "detailed_description",
+        "overall_soundscape",
+        "non_diegetic_music",
+        "shot_count",
+    )
+    INPUT_IS_LIST = True
+    FUNCTION = "build_prompt"
+    CATEGORY = "Runninghub/Storyboard/REF2V"
+
+    def build_prompt(
+        self,
+        storyboard_texts,
+        seconds_per_shot=4.5,
+        start_time_seconds=0.0,
+        reference_mode="one_picture_per_shot",
+        overall_soundscape="",
+        non_diegetic_music="N/A",
+        subject_definitions_override="",
+    ):
+        return build_ref2v_prompt_fields(
+            storyboard_texts=storyboard_texts,
+            seconds_per_shot=float(_ref2v_first(seconds_per_shot, 4.5)),
+            start_time_seconds=float(_ref2v_first(start_time_seconds, 0.0)),
+            reference_mode=str(_ref2v_first(reference_mode, "one_picture_per_shot")),
+            subject_definitions_override=str(
+                _ref2v_first(subject_definitions_override, "") or ""
+            ),
+            overall_soundscape=str(_ref2v_first(overall_soundscape, "") or ""),
+            non_diegetic_music=str(_ref2v_first(non_diegetic_music, "N/A") or "N/A"),
         )
 
 

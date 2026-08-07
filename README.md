@@ -87,6 +87,12 @@ Creates a mapped list of `Scene_01`, `Scene_02`... filename prefixes from the st
 
 Takes the combined `storyboard_json` output and selects one scene by number. It returns separate positive prompt, negative prompt, camera, continuity note and shot JSON outputs. Duplicate this node for each visible storyboard branch when you want every scene connected to its own preview or image-generation workflow.
 
+### RH Storyboard - REF2V Multi-Shot Prompt
+
+Converts several storyboard prompt strings, one multi-shot text block, or the parser's complete `storyboard_json` into the six REF2V2a prompt-builder sections shown by the target video workflow: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, and `non_diegetic_music`. It also emits one combined `ref2v_prompt` with the section headers already added.
+
+Connect `positive_prompts` when only the ordered shot text is needed, or connect `storyboard_json` to let the node reuse `character_bible` details and the shorter `raw_prompt` stored for each shot. The default `one_picture_per_shot` mode maps `[Shot N]` to `<Picture N>`, while `first_picture_for_all_shots` uses one identity/opening reference and `text_only` emits no picture tags. `seconds_per_shot` controls cumulative timestamps; the 4.5-second default produces `00:00.000`, `00:04.500`, `00:09.000`, and so on.
+
 ## Expected director JSON
 
 ```json

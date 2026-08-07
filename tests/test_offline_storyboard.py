@@ -15,17 +15,74 @@ from node import (
     RH_OfflineStoryboardParser_Node,
     RH_OfflineStoryboardRequest_Node,
     RH_OfflineStoryboardSceneRequests_Node,
+    RH_REF2VStoryboardPrompt_Node,
     RH_StoryboardScenePrefixes_Node,
     _build_continuity_scene_request,
     _extract_api_image_bytes,
     _locked_continuity_prompt,
     _normalize_continuity_outline,
     _scene_save_prefix,
+    build_ref2v_prompt_fields,
     parse_offline_storyboard_text,
 )
 
 
 class OfflineStoryboardParserTests(unittest.TestCase):
+    def test_ref2v_compiles_prompt_list_into_six_sections(self):
+        result = build_ref2v_prompt_fields(
+            ["wide shot of a woman entering the station", "close-up as she opens a letter"],
+            seconds_per_shot=4.5,
+        )
+        full_prompt, subjects, summary, retention, details, soundscape, music, count = result
+        self.assertEqual(count, 2)
+        self.assertIn("<Picture 1>", subjects)
+        self.assertIn("<Picture 2>", subjects)
+        self.assertIn("[Shot 1] At 00:00.000", details)
+        self.assertIn("[Shot 2] At 00:04.500", details)
+        self.assertIn("subject_definitions:", full_prompt)
+        self.assertIn("retention_analysis:", full_prompt)
+        self.assertTrue(soundscape)
+        self.assertEqual(music, "N/A")
+
+    def test_ref2v_uses_raw_prompts_and_character_bible_from_storyboard_json(self):
+        storyboard = json.dumps(
+            {
+                "character_bible": {
+                    "character_id": "primary",
+                    "identity": "Chinese woman",
+                    "hairstyle": "short dark hair",
+                    "clothing": "red coat",
+                },
+                "shots": [
+                    {"raw_prompt": "walks through a rainy street", "prompt": "LOCKED PREFIX, rainy street"},
+                    {"raw_prompt": "stops under a neon sign", "prompt": "LOCKED PREFIX, neon sign"},
+                ],
+            },
+            ensure_ascii=False,
+        )
+        result = RH_REF2VStoryboardPrompt_Node().build_prompt(
+            [storyboard],
+            [5.0],
+            [0.0],
+            ["one_picture_per_shot"],
+            ["city rain and footsteps"],
+            ["N/A"],
+            [""],
+        )
+        self.assertEqual(result[-1], 2)
+        self.assertIn("short dark hair", result[1])
+        self.assertIn("red coat", result[1])
+        self.assertIn("walks through a rainy street", result[4])
+        self.assertNotIn("LOCKED PREFIX", result[4])
+        self.assertIn("[Shot 2] At 00:05.000", result[4])
+
+    def test_ref2v_splits_bracketed_multishot_text(self):
+        text = "[Shot 1] opening wide shot\n[Shot 2] medium shot\n[Shot 3] final close-up"
+        result = build_ref2v_prompt_fields(text, reference_mode="text_only")
+        self.assertEqual(result[-1], 3)
+        self.assertNotIn("<Picture 1>", result[1])
+        self.assertIn("[Shot 3] At 00:09.000", result[4])
+
     def test_extracts_base64_image_api_response(self):
         expected = b"image-bytes"
         response = {"data": [{"b64_json": base64.b64encode(expected).decode("ascii")}]}
