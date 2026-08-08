@@ -1632,6 +1632,7 @@ class RH_MiniMaxH3Settings_Node:
         "INT",
         MINIMAX_H3_REF_IMAGE_SIZES,
         "INT",
+        "COMBO",
     )
     RETURN_NAMES = (
         "mode",
@@ -1640,6 +1641,7 @@ class RH_MiniMaxH3Settings_Node:
         "duration",
         "ref_image_size",
         "max_reference_images",
+        "director_mode",
     )
     FUNCTION = "values"
     CATEGORY = "Runninghub/Storyboard/Video"
@@ -1655,6 +1657,7 @@ class RH_MiniMaxH3Settings_Node:
             max(1, int(duration)),
             str(ref_image_size or "match"),
             max(1, min(9, int(max_reference_images))),
+            mode,
         )
 
 

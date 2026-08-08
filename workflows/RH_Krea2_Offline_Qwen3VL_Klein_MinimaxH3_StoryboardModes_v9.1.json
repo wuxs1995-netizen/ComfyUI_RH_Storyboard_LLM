@@ -5614,13 +5614,7 @@
         {
           "localized_name": "mode",
           "name": "mode",
-          "type": [
-            "T2VA",
-            "I2VA",
-            "FL2VA",
-            "L2VA",
-            "REF2VA"
-          ],
+          "type": "COMBO",
           "widget": {
             "name": "mode"
           },
@@ -5865,8 +5859,7 @@
             "REF2VA"
           ],
           "links": [
-            30176,
-            30188
+            30176
           ]
         },
         {
@@ -5911,6 +5904,14 @@
           "type": "INT",
           "links": [
             30181
+          ]
+        },
+        {
+          "localized_name": "DaSiWa 子工作流模式",
+          "name": "director_mode",
+          "type": "COMBO",
+          "links": [
+            30188
           ]
         }
       ],
@@ -7003,7 +7004,7 @@
     [
       30188,
       1393,
-      0,
+      6,
       1389,
       0,
       "COMBO"
@@ -19885,13 +19886,7 @@
           {
             "id": "1e0937ba-af30-530f-b3e4-08399a4a0944",
             "name": "mode",
-            "type": [
-              "T2VA",
-              "I2VA",
-              "FL2VA",
-              "L2VA",
-              "REF2VA"
-            ],
+            "type": "COMBO",
             "linkIds": [
               6001
             ],
@@ -20765,13 +20760,7 @@
               {
                 "localized_name": "mode",
                 "name": "mode",
-                "type": [
-                  "T2VA",
-                  "I2VA",
-                  "FL2VA",
-                  "L2VA",
-                  "REF2VA"
-                ],
+                "type": "COMBO",
                 "widget": {
                   "name": "mode"
                 },

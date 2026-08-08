@@ -54,7 +54,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         result = RH_MiniMaxH3Settings_Node().values(
             "ref2va", 1024, 576, 18, "max", 99
         )
-        self.assertEqual(result, ("REF2VA", 1024, 576, 18, "max", 9))
+        self.assertEqual(result, ("REF2VA", 1024, 576, 18, "max", 9, "REF2VA"))
         self.assertEqual(
             RH_MiniMaxH3Settings_Node.RETURN_NAMES,
             (
@@ -64,6 +64,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
                 "duration",
                 "ref_image_size",
                 "max_reference_images",
+                "director_mode",
             ),
         )
         self.assertEqual(
@@ -903,6 +904,8 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             ["T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA"],
         )
         self.assertEqual(nodes[1393]["outputs"][4]["type"], ["match", "max"])
+        self.assertEqual(nodes[1393]["outputs"][6]["name"], "director_mode")
+        self.assertEqual(nodes[1393]["outputs"][6]["type"], "COMBO")
         self.assertEqual(
             nodes[1394]["inputs"][1]["type"],
             ["T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA"],
@@ -910,6 +913,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertEqual(nodes[1394]["inputs"][9]["type"], ["match", "max"])
         self.assertEqual(nodes[1394]["inputs"][0]["link"], 30175)
         self.assertEqual(nodes[1389]["inputs"][0]["link"], 30188)
+        self.assertEqual(nodes[1389]["inputs"][0]["type"], "COMBO")
         self.assertEqual(nodes[1389]["inputs"][2]["link"], 30189)
         self.assertEqual(nodes[1389]["inputs"][7]["link"], 30186)
 
@@ -926,6 +930,8 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertEqual([link["id"] for link in guide_links], [6010])
         self.assertEqual(guide_links[0]["origin_id"], -10)
         self.assertEqual(guide_links[0]["target_id"], 1512)
+        root_links = {link[0]: link for link in workflow["links"]}
+        self.assertEqual(root_links[30188][1:6], [1393, 6, 1389, 0, "COMBO"])
         self.assertNotIn("10eros", workflow_path.read_text(encoding="utf-8").lower())
 
     def test_optional_i2v_workflow_uses_resolution_master_and_has_no_temp_outputs(self):
