@@ -79,7 +79,11 @@ The parser raises a clear error when the local model returns fewer usable prompt
 
 Switches the image and downstream video prompt source between the generated storyboard list and user-edited final prompts. The automatic input is lazy: when `手动粘贴` is selected, ComfyUI does not evaluate the connected Qwen/LLM branch.
 
-The node separates repeated character/style/aspect locks into one `global_prompt`. Its clean `scene_prompts` output contains only the scene number, current action and shot description for previewing, copying, editing and MiniMax compilation. `generation_prompts` adds the global lock back immediately before Krea generation. Automatic LLM mode supports automatic extraction, manual character replacement while preserving generated style/aspect, complete Global replacement, or appending custom continuity rules. The manual field accepts a JSON string array, one complete prompt per line, or multiline prompts separated by a line containing `---`.
+The node separates repeated character/style/aspect locks into one `global_prompt`. Its clean `scene_prompts` output contains only the scene number, current action and shot description for previewing, copying, editing and MiniMax compilation. `generation_prompts` rebuilds each image prompt in scene-first order immediately before Krea generation: current composition/action, a composition guard, style/aspect, then the character identity lock. This prevents detailed face anchors from silently turning wide, full-body, back, overhead or action shots into centered portraits.
+
+The framing selector provides `构图优先（推荐）`, `平衡` and `人脸优先`. Composition-priority mode removes `facial_features` from non-face shots while retaining age, ethnicity, skin tone, body build/proportions, hairstyle, clothing and silhouette; explicit face close-ups retain the complete facial lock. Automatic LLM mode still supports automatic extraction, manual character replacement while preserving generated style/aspect, complete Global replacement, or appending custom continuity rules. The manual field accepts a JSON string array, one complete prompt per line, or multiline prompts separated by a line containing `---`.
+
+`workflows/RH_Krea2_Manual_Prompt_Override.json` is the Krea-only example. Its former Klein branch and automatic face-swap router have been removed, so Krea's original storyboard images connect directly to the numbered final saver without requiring Klein nodes or models.
 
 ### RH Storyboard - Save Numbered Scenes
 

@@ -724,6 +724,211 @@ def combine_storyboard_global_prompt(global_prompt, scene_prompt):
     return f"{global_text}, {scene_text}"
 
 
+STORYBOARD_FRAMING_MODES = (
+    "构图优先（推荐）",
+    "平衡",
+    "人脸优先",
+)
+
+
+def _storyboard_scene_requests_face_detail(scene_prompt):
+    text = str(scene_prompt or "").lower()
+    return any(
+        marker in text
+        for marker in (
+            "脸部特写",
+            "面部特写",
+            "人脸特写",
+            "大特写",
+            "正脸清晰",
+            "正面人脸",
+            "正脸可见",
+            "面部清晰",
+            "五官清晰",
+            "close-up of the face",
+            "facial close-up",
+            "face close-up",
+            "front-facing face",
+            "face clearly visible",
+            "headshot",
+        )
+    )
+
+
+def _storyboard_scene_deemphasizes_face(scene_prompt):
+    text = str(scene_prompt or "").lower()
+    return any(
+        marker in text
+        for marker in (
+            "远景",
+            "大远景",
+            "全景",
+            "全身",
+            "背面",
+            "背对",
+            "侧面",
+            "侧身",
+            "俯拍",
+            "鸟瞰",
+            "高空",
+            "过肩",
+            "遮挡",
+            "脸部不可见",
+            "看不清脸",
+            "人物很小",
+            "运动镜头",
+            "奔跑",
+            "跑动",
+            "跳跃",
+            "打斗",
+            "追逐",
+            "wide shot",
+            "long shot",
+            "full body",
+            "full-body",
+            "back view",
+            "from behind",
+            "rear view",
+            "side view",
+            "profile view",
+            "overhead",
+            "bird's-eye",
+            "aerial view",
+            "occluded",
+            "face hidden",
+            "small in frame",
+            "running",
+            "jumping",
+            "fight scene",
+            "chase scene",
+            "action shot",
+        )
+    )
+
+
+def _without_character_anchor_fields(anchor, excluded_fields):
+    excluded = set(excluded_fields or ())
+    if not excluded:
+        return str(anchor or "").strip()
+    filtered = []
+    for entry in _character_anchor_entries(anchor):
+        separator = entry.find(":")
+        if separator < 0:
+            filtered.append(entry)
+            continue
+        label = entry[:separator].strip()
+        payload = entry[separator + 1 :].strip()
+        try:
+            value = json.loads(payload)
+        except (TypeError, json.JSONDecodeError):
+            filtered.append(entry)
+            continue
+        if not isinstance(value, dict):
+            filtered.append(entry)
+            continue
+        value = {key: item for key, item in value.items() if key not in excluded}
+        filtered.append(
+            f"{label}: {json.dumps(value, ensure_ascii=False, separators=(',', ':'))}"
+        )
+    return "; ".join(filtered)
+
+
+def combine_storyboard_composition_prompt(
+    global_prompt,
+    scene_prompt,
+    framing_priority="构图优先（推荐）",
+):
+    """Put shot instructions first and keep identity locks from hijacking framing."""
+    scene_text = str(scene_prompt or "").strip()
+    global_text = str(global_prompt or "").strip().rstrip(",， ")
+    if not global_text:
+        return scene_text
+    if not scene_text:
+        return global_text
+
+    framing = str(framing_priority or STORYBOARD_FRAMING_MODES[0])
+    if framing not in STORYBOARD_FRAMING_MODES:
+        framing = STORYBOARD_FRAMING_MODES[0]
+    language = (
+        "English"
+        if "CHARACTER CONTINUITY LOCK" in global_text or "STYLE LOCK" in global_text
+        else "中文"
+    )
+    parts = _locked_prefix_parts(global_text, language)
+    face_requested = _storyboard_scene_requests_face_detail(scene_text)
+    face_deemphasized = _storyboard_scene_deemphasizes_face(scene_text)
+    remove_face_detail = (
+        framing == "构图优先（推荐）" and not face_requested
+    ) or (
+        framing == "平衡" and face_deemphasized and not face_requested
+    )
+
+    if language == "English":
+        if framing == "人脸优先":
+            guard = (
+                "IDENTITY GUIDANCE: keep the face recognizable without changing the "
+                "specified action, environment, shot size or camera angle"
+            )
+        elif face_requested:
+            guard = (
+                "COMPOSITION GUARD: obey the specified shot size, camera angle and pose; "
+                "do not turn it into a centered ID-photo portrait"
+            )
+        else:
+            guard = (
+                "COMPOSITION GUARD: do not change this into a frontal, close-up or centered "
+                "portrait merely to show the face; wide, full-body, back, side, overhead, "
+                "occluded and small-or-invisible-face compositions are allowed"
+            )
+    else:
+        if framing == "人脸优先":
+            guard = "身份约束：在不改变当前动作、场景、景别和机位的前提下清晰保持人物面部身份"
+        elif face_requested:
+            guard = "构图约束：严格服从当前镜头指定的景别、角度和姿势，不得改成居中证件照式构图"
+        else:
+            guard = (
+                "构图约束：不得为了展示人脸而改成正面、近景或居中肖像；允许远景、全身、"
+                "背面、侧面、俯拍、遮挡，以及人脸较小或不可见"
+            )
+
+    if not parts:
+        label = (
+            "GLOBAL IDENTITY CONTINUITY (identity only; never override the shot): "
+            if language == "English"
+            else "全局人物连续性（只约束身份，不得覆盖上述镜头）："
+        )
+        return f"{scene_text}. {guard}. {label}{global_text}"
+
+    character_anchor = _without_character_anchor_fields(
+        parts["character_anchor"],
+        {"facial_features"} if remove_face_detail else set(),
+    )
+    if language == "English":
+        clauses = [scene_text, guard]
+        if parts["style_anchor"]:
+            clauses.append(f"STYLE LOCK: {parts['style_anchor']}")
+        if parts["ratio"]:
+            clauses.append(f"ASPECT RATIO LOCK: {parts['ratio']}")
+        if character_anchor:
+            clauses.append(
+                "CHARACTER IDENTITY CONTINUITY (identity only; do not alter the shot, "
+                f"action, framing or camera): {character_anchor}"
+            )
+        return ". ".join(clause.strip().rstrip(". ") for clause in clauses if clause)
+
+    clauses = [scene_text, guard]
+    if parts["style_anchor"]:
+        clauses.append(f"视觉风格锁定：{parts['style_anchor']}")
+    if parts["ratio"]:
+        clauses.append(f"画幅锁定：{parts['ratio']}")
+    if character_anchor:
+        clauses.append(
+            "人物身份连续性锁定（只约束人物身份，不得改变上述构图、动作、景别或机位）："
+            f"{character_anchor}"
+        )
+    return "。".join(clause.strip().rstrip("。 ") for clause in clauses if clause)
+
+
 def combine_storyboard_global_layers(automatic_global, custom_global):
     parts = []
     for value in (automatic_global, custom_global):
@@ -2492,6 +2697,7 @@ class RH_StoryboardPromptSource_Node:
         "手动覆盖全部 Global",
         "追加到自动 Global",
     )
+    FRAMING_MODES = STORYBOARD_FRAMING_MODES
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -2527,6 +2733,13 @@ class RH_StoryboardPromptSource_Node:
                         "tooltip": "自动 LLM 下可覆盖人物锁定、覆盖全部 Global，或追加自定义要求。",
                     },
                 ),
+                "framing_priority": (
+                    cls.FRAMING_MODES,
+                    {
+                        "default": "构图优先（推荐）",
+                        "tooltip": "构图优先会让 Scene/动作先执行；非脸部特写镜头自动移除 facial_features，避免提示词把画面拉成人脸居中肖像。",
+                    },
+                ),
             },
             "optional": {
                 "automatic_prompts": ("STRING", {"lazy": True, "forceInput": True}),
@@ -2559,6 +2772,7 @@ class RH_StoryboardPromptSource_Node:
         global_prompt_override,
         automatic_global_mode,
         automatic_prompts=None,
+        framing_priority=None,
     ):
         mode = str(self._first(source_mode) or self.AUTO_MODE)
         if mode == self.AUTO_MODE and self._first(automatic_prompts) is None:
@@ -2572,17 +2786,19 @@ class RH_StoryboardPromptSource_Node:
         global_prompt_override,
         automatic_global_mode,
         automatic_prompts=None,
+        framing_priority=None,
     ):
         mode = str(self._first(source_mode) or self.AUTO_MODE)
         custom_global = str(self._first(global_prompt_override) or "").strip()
         global_mode = str(
             self._first(automatic_global_mode) or self.AUTO_GLOBAL_MODES[0]
         )
+        framing = str(self._first(framing_priority) or self.FRAMING_MODES[0])
         if mode == self.MANUAL_MODE:
             scene_prompts = parse_manual_storyboard_prompts(self._first(manual_prompts))
             global_prompt = custom_global
             generation_prompts = [
-                combine_storyboard_global_prompt(global_prompt, prompt)
+                combine_storyboard_composition_prompt(global_prompt, prompt, framing)
                 for prompt in scene_prompts
             ]
         else:
@@ -2617,13 +2833,10 @@ class RH_StoryboardPromptSource_Node:
             else:
                 global_prompt = detected_global
 
-            if global_mode == "自动提取":
-                generation_prompts = automatic_generation
-            else:
-                generation_prompts = [
-                    combine_storyboard_global_prompt(global_prompt, prompt)
-                    for prompt in scene_prompts
-                ]
+            generation_prompts = [
+                combine_storyboard_composition_prompt(global_prompt, prompt, framing)
+                for prompt in scene_prompts
+            ]
         return (
             generation_prompts,
             scene_prompts,

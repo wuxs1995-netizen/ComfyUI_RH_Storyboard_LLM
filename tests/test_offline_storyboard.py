@@ -28,6 +28,7 @@ from node import (
     _normalize_continuity_outline,
     _scene_save_prefix,
     build_ref2v_prompt_fields,
+    combine_storyboard_composition_prompt,
     parse_offline_storyboard_text,
     parse_manual_storyboard_prompts,
     replace_storyboard_character_global,
@@ -77,8 +78,10 @@ class OfflineStoryboardParserTests(unittest.TestCase):
     def test_manual_prompt_source_skips_automatic_branch_in_manual_mode(self):
         source = RH_StoryboardPromptSource_Node()
         automatic_spec = source.INPUT_TYPES()["optional"]["automatic_prompts"]
+        framing_spec = source.INPUT_TYPES()["required"]["framing_priority"]
         self.assertTrue(automatic_spec[1]["lazy"])
         self.assertTrue(automatic_spec[1]["forceInput"])
+        self.assertEqual(framing_spec[1]["default"], "构图优先（推荐）")
         self.assertEqual(
             source.check_lazy_status(
                 ["手动粘贴"], ["edited prompt"], [""], ["自动提取"], (None,)
@@ -108,10 +111,9 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             ["自动提取"],
         )
         self.assertEqual(scenes, ["edited scene 1", "edited scene 2"])
-        self.assertEqual(
-            generation,
-            ["GLOBAL LOCK, edited scene 1", "GLOBAL LOCK, edited scene 2"],
-        )
+        self.assertTrue(generation[0].startswith("edited scene 1"))
+        self.assertTrue(generation[1].startswith("edited scene 2"))
+        self.assertTrue(all(prompt.endswith("GLOBAL LOCK") for prompt in generation))
         self.assertEqual(global_prompt, "GLOBAL LOCK")
         self.assertEqual((count, active), (2, "手动粘贴"))
 
@@ -149,7 +151,10 @@ class OfflineStoryboardParserTests(unittest.TestCase):
                 ["自动 LLM"], [""], [""], ["自动提取"], automatic
             )
         )
-        self.assertEqual(generation, automatic)
+        self.assertTrue(generation[0].startswith(scenes[0]))
+        self.assertTrue(generation[1].startswith(scenes[1]))
+        self.assertIn("人物身份连续性锁定", generation[0])
+        self.assertLess(generation[0].index(scenes[0]), generation[0].index("人物身份连续性锁定"))
         self.assertEqual(selected, scenes)
         self.assertEqual(detected_global, prefix)
         self.assertEqual(count, 2)
@@ -197,7 +202,8 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             automatic,
         )
         self.assertEqual(global_prompt, "CUSTOM GLOBAL")
-        self.assertEqual(generation, ["CUSTOM GLOBAL, 分镜 01/01，女孩站立"])
+        self.assertTrue(generation[0].startswith("分镜 01/01，女孩站立"))
+        self.assertTrue(generation[0].endswith("CUSTOM GLOBAL"))
 
         generation, _, global_prompt, _, _ = RH_StoryboardPromptSource_Node().select_prompts(
             ["自动 LLM"],
@@ -209,6 +215,60 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertIn("人物连续性锁定", global_prompt)
         self.assertIn("extra continuity rule", global_prompt)
         self.assertIn("extra continuity rule", generation[0])
+
+    def test_composition_priority_removes_face_details_from_wide_or_back_shots(self):
+        global_prompt = (
+            '1:1, 人物连续性锁定（所有镜头必须完全一致，不得改动）：primary: '
+            '{"identity":"成年中国女性","age":"25","facial_features":"固定鹅蛋脸和杏眼",'
+            '"hairstyle":"黑色齐肩短发","clothing":"蓝色夹克"}, '
+            '视觉风格锁定：visual_style: 写实; aspect_ratio: 1:1'
+        )
+        scene = "SCENE 01/02，全身远景，人物背对镜头奔跑穿过车站"
+        prompt = combine_storyboard_composition_prompt(
+            global_prompt,
+            scene,
+            "构图优先（推荐）",
+        )
+        self.assertTrue(prompt.startswith(scene))
+        self.assertNotIn("facial_features", prompt)
+        self.assertIn("hairstyle", prompt)
+        self.assertIn("不得为了展示人脸", prompt)
+        self.assertGreater(prompt.index("人物身份连续性锁定"), prompt.index(scene))
+
+    def test_composition_priority_keeps_face_details_for_explicit_face_closeup(self):
+        global_prompt = (
+            '1:1, 人物连续性锁定（所有镜头必须完全一致，不得改动）：primary: '
+            '{"identity":"成年中国女性","age":"25","facial_features":"固定鹅蛋脸和杏眼",'
+            '"hairstyle":"黑色齐肩短发"}, 视觉风格锁定：realism'
+        )
+        scene = "SCENE 02/02，脸部特写，正脸清晰可见，人物轻轻微笑"
+        prompt = combine_storyboard_composition_prompt(
+            global_prompt,
+            scene,
+            "构图优先（推荐）",
+        )
+        self.assertTrue(prompt.startswith(scene))
+        self.assertIn('"facial_features":"固定鹅蛋脸和杏眼"', prompt)
+        self.assertIn("不得改成居中证件照式构图", prompt)
+
+    def test_balance_only_removes_face_details_when_scene_deemphasizes_face(self):
+        global_prompt = (
+            '1:1, 人物连续性锁定（所有镜头必须完全一致，不得改动）：primary: '
+            '{"identity":"adult woman","facial_features":"fixed face","hairstyle":"bob"}, '
+            '视觉风格锁定：realism'
+        )
+        medium_prompt = combine_storyboard_composition_prompt(
+            global_prompt,
+            "中景，人物坐在窗边阅读",
+            "平衡",
+        )
+        wide_prompt = combine_storyboard_composition_prompt(
+            global_prompt,
+            "全身远景，人物背对镜头走入树林",
+            "平衡",
+        )
+        self.assertIn("facial_features", medium_prompt)
+        self.assertNotIn("facial_features", wide_prompt)
 
     def test_global_split_keeps_scene_specific_supporting_character_lock(self):
         primary = 'primary: {"character_id":"primary","identity":"girl"}'
@@ -1105,8 +1165,9 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         links = {link[0]: link for link in workflow["links"]}
         self.assertEqual(nodes[2704]["type"], "RH_STORYBOARD_PROMPT_SOURCE")
         self.assertEqual(nodes[2704]["widgets_values"][0], "自动 LLM")
-        self.assertEqual(len(nodes[2704]["widgets_values"]), 4)
+        self.assertEqual(len(nodes[2704]["widgets_values"]), 5)
         self.assertEqual(nodes[2704]["widgets_values"][3], "自动提取")
+        self.assertEqual(nodes[2704]["widgets_values"][4], "构图优先（推荐）")
         self.assertEqual(nodes[2705]["type"], "PreviewAny")
         self.assertEqual(links[30175][1:6], [100, 0, 2704, 0, "STRING"])
         self.assertEqual(links[30139][1:6], [2704, 0, 34, 1, "STRING"])
@@ -1116,6 +1177,12 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertEqual(nodes[2704]["outputs"][0]["links"], [30139])
         self.assertEqual(nodes[2704]["outputs"][1]["links"], [30140])
         self.assertEqual(nodes[2704]["outputs"][2]["links"], [30176])
+        self.assertNotIn(31, {group.get("id") for group in workflow.get("groups", [])})
+        removed_klein_nodes = set(range(43, 79)) | {81, 96, 97, 98}
+        self.assertTrue(removed_klein_nodes.isdisjoint(nodes))
+        self.assertEqual(links[30129][1:6], [34, 0, 80, 0, "IMAGE"])
+        self.assertEqual(nodes[80]["inputs"][0]["link"], 30129)
+        self.assertIn(30129, nodes[34]["outputs"][0]["links"])
 
     def test_minimax_v91_workflow_links_storyboard_images_for_all_modes(self):
         workflow_path = (
