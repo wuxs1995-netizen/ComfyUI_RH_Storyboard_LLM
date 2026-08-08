@@ -5614,7 +5614,13 @@
         {
           "localized_name": "mode",
           "name": "mode",
-          "type": "COMBO",
+          "type": [
+            "T2VA",
+            "I2VA",
+            "FL2VA",
+            "L2VA",
+            "REF2VA"
+          ],
           "widget": {
             "name": "mode"
           },
@@ -5851,7 +5857,13 @@
         {
           "localized_name": "模式",
           "name": "mode",
-          "type": "COMBO",
+          "type": [
+            "T2VA",
+            "I2VA",
+            "FL2VA",
+            "L2VA",
+            "REF2VA"
+          ],
           "links": [
             30176,
             30188
@@ -5885,7 +5897,10 @@
         {
           "localized_name": "参考图尺寸策略",
           "name": "ref_image_size",
-          "type": "COMBO",
+          "type": [
+            "match",
+            "max"
+          ],
           "links": [
             30180
           ]
@@ -5943,7 +5958,13 @@
         {
           "localized_name": "模式",
           "name": "mode",
-          "type": "COMBO",
+          "type": [
+            "T2VA",
+            "I2VA",
+            "FL2VA",
+            "L2VA",
+            "REF2VA"
+          ],
           "link": 30176
         },
         {
@@ -5991,7 +6012,10 @@
         {
           "localized_name": "参考图尺寸策略",
           "name": "ref_image_size",
-          "type": "COMBO",
+          "type": [
+            "match",
+            "max"
+          ],
           "link": 30180
         },
         {
@@ -19861,7 +19885,13 @@
           {
             "id": "1e0937ba-af30-530f-b3e4-08399a4a0944",
             "name": "mode",
-            "type": "COMBO",
+            "type": [
+              "T2VA",
+              "I2VA",
+              "FL2VA",
+              "L2VA",
+              "REF2VA"
+            ],
             "linkIds": [
               6001
             ],
@@ -20735,7 +20765,13 @@
               {
                 "localized_name": "mode",
                 "name": "mode",
-                "type": "COMBO",
+                "type": [
+                  "T2VA",
+                  "I2VA",
+                  "FL2VA",
+                  "L2VA",
+                  "REF2VA"
+                ],
                 "widget": {
                   "name": "mode"
                 },

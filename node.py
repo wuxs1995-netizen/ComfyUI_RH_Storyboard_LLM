@@ -535,6 +535,7 @@ REF2V_REFERENCE_MODES = (
 )
 
 MINIMAX_H3_MODES = ("T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA")
+MINIMAX_H3_REF_IMAGE_SIZES = ("match", "max")
 
 
 def _ref2v_first(value, default=None):
@@ -1614,7 +1615,7 @@ class RH_MiniMaxH3Settings_Node:
                 "width": ("INT", {"default": 768, "min": 32, "max": 8192, "step": 32}),
                 "height": ("INT", {"default": 768, "min": 32, "max": 8192, "step": 32}),
                 "duration": ("INT", {"default": 18, "min": 1, "max": 1000}),
-                "ref_image_size": (("match", "max"), {"default": "match"}),
+                "ref_image_size": (MINIMAX_H3_REF_IMAGE_SIZES, {"default": "match"}),
                 "max_reference_images": (
                     "INT",
                     {"default": 9, "min": 1, "max": 9, "step": 1},
@@ -1622,7 +1623,16 @@ class RH_MiniMaxH3Settings_Node:
             }
         }
 
-    RETURN_TYPES = ("COMBO", "INT", "INT", "INT", "COMBO", "INT")
+    # Combo sockets must expose their concrete option tuples. A generic "COMBO"
+    # output is rejected by ComfyUI when linked to a specific enum input.
+    RETURN_TYPES = (
+        MINIMAX_H3_MODES,
+        "INT",
+        "INT",
+        "INT",
+        MINIMAX_H3_REF_IMAGE_SIZES,
+        "INT",
+    )
     RETURN_NAMES = (
         "mode",
         "width",
@@ -1664,7 +1674,7 @@ class RH_MiniMaxH3StoryboardGuide_Node:
                 "width": ("INT", {"forceInput": True}),
                 "height": ("INT", {"forceInput": True}),
                 "duration": ("INT", {"forceInput": True}),
-                "ref_image_size": (("match", "max"), {"forceInput": True}),
+                "ref_image_size": (MINIMAX_H3_REF_IMAGE_SIZES, {"forceInput": True}),
                 "max_reference_images": (
                     "INT",
                     {"forceInput": True},

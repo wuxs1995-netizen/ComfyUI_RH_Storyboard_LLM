@@ -66,6 +66,14 @@ class OfflineStoryboardParserTests(unittest.TestCase):
                 "max_reference_images",
             ),
         )
+        self.assertEqual(
+            RH_MiniMaxH3Settings_Node.RETURN_TYPES[0],
+            ("T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA"),
+        )
+        self.assertEqual(
+            RH_MiniMaxH3Settings_Node.RETURN_TYPES[4],
+            ("match", "max"),
+        )
 
     def test_ref2v_storyboard_input_is_linkable_and_widget_serializable(self):
         storyboard_spec = RH_REF2VStoryboardPrompt_Node.INPUT_TYPES()["required"][
@@ -890,6 +898,16 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertEqual(nodes[1393]["type"], "RH_MINIMAX_H3_SETTINGS")
         self.assertEqual(nodes[1394]["type"], "RH_MINIMAX_H3_STORYBOARD_GUIDE")
         self.assertEqual(nodes[1393]["widgets_values"], ["FL2VA", 768, 768, 18, "match", 9])
+        self.assertEqual(
+            nodes[1393]["outputs"][0]["type"],
+            ["T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA"],
+        )
+        self.assertEqual(nodes[1393]["outputs"][4]["type"], ["match", "max"])
+        self.assertEqual(
+            nodes[1394]["inputs"][1]["type"],
+            ["T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA"],
+        )
+        self.assertEqual(nodes[1394]["inputs"][9]["type"], ["match", "max"])
         self.assertEqual(nodes[1394]["inputs"][0]["link"], 30175)
         self.assertEqual(nodes[1389]["inputs"][0]["link"], 30188)
         self.assertEqual(nodes[1389]["inputs"][2]["link"], 30189)
