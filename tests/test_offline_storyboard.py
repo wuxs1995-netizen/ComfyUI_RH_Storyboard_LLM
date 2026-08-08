@@ -30,6 +30,7 @@ from node import (
     build_ref2v_prompt_fields,
     parse_offline_storyboard_text,
     parse_manual_storyboard_prompts,
+    replace_storyboard_character_global,
     separate_storyboard_global_prompt,
 )
 
@@ -79,11 +80,15 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertTrue(automatic_spec[1]["lazy"])
         self.assertTrue(automatic_spec[1]["forceInput"])
         self.assertEqual(
-            source.check_lazy_status(["手动粘贴"], ["edited prompt"], [""], (None,)),
+            source.check_lazy_status(
+                ["手动粘贴"], ["edited prompt"], [""], ["自动提取"], (None,)
+            ),
             [],
         )
         self.assertEqual(
-            source.check_lazy_status(["自动 LLM"], [""], [""], (None,)),
+            source.check_lazy_status(
+                ["自动 LLM"], [""], [""], ["自动提取"], (None,)
+            ),
             ["automatic_prompts"],
         )
         self.assertEqual(
@@ -91,6 +96,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
                 ["自动 LLM"],
                 [""],
                 [""],
+                ["自动提取"],
                 ["generated prompt"],
             ),
             [],
@@ -99,6 +105,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             ["手动粘贴"],
             ["edited scene 1\nedited scene 2"],
             ["GLOBAL LOCK"],
+            ["自动提取"],
         )
         self.assertEqual(scenes, ["edited scene 1", "edited scene 2"])
         self.assertEqual(
@@ -113,6 +120,7 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             ["自动 LLM"],
             [""],
             [""],
+            ["自动提取"],
             ["auto scene 1", "auto scene 2"],
         )
         self.assertEqual(generation, ["auto scene 1", "auto scene 2"])
@@ -138,13 +146,69 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         )
         generation, selected, detected_global, count, _ = (
             RH_StoryboardPromptSource_Node().select_prompts(
-                ["自动 LLM"], [""], [""], automatic
+                ["自动 LLM"], [""], [""], ["自动提取"], automatic
             )
         )
         self.assertEqual(generation, automatic)
         self.assertEqual(selected, scenes)
         self.assertEqual(detected_global, prefix)
         self.assertEqual(count, 2)
+
+    def test_automatic_mode_can_override_character_but_keep_style_and_ratio(self):
+        automatic_global = (
+            '1:1, 人物连续性锁定（所有镜头必须完全一致，不得改动）：primary: '
+            '{"identity":"旧人物"}, 视觉风格锁定：visual_style: 偷拍感; aspect_ratio: 1:1'
+        )
+        replaced = replace_storyboard_character_global(
+            automatic_global,
+            "18岁中国少女，齐肩短发，浅棕色皮肤，娇小丰满体型",
+        )
+        self.assertIn("18岁中国少女", replaced)
+        self.assertNotIn("旧人物", replaced)
+        self.assertIn("visual_style: 偷拍感", replaced)
+        self.assertTrue(replaced.startswith("1:1,"))
+
+        automatic = [f"{automatic_global}, 当前镜头：分镜 01/01，女孩看向窗外"]
+        generation, scenes, global_prompt, count, _ = (
+            RH_StoryboardPromptSource_Node().select_prompts(
+                ["自动 LLM"],
+                [""],
+                ["18岁中国少女，齐肩短发"],
+                ["手动人物覆盖（保留风格/画幅）"],
+                automatic,
+            )
+        )
+        self.assertIn("18岁中国少女", global_prompt)
+        self.assertIn("视觉风格锁定", global_prompt)
+        self.assertNotIn("旧人物", generation[0])
+        self.assertEqual(scenes, ["分镜 01/01，女孩看向窗外"])
+        self.assertEqual(count, 1)
+
+    def test_automatic_mode_can_replace_or_append_complete_global_prompt(self):
+        automatic = [
+            "1:1, 人物连续性锁定（所有镜头必须完全一致，不得改动）：old, "
+            "视觉风格锁定：realism, 当前镜头：分镜 01/01，女孩站立"
+        ]
+        generation, _, global_prompt, _, _ = RH_StoryboardPromptSource_Node().select_prompts(
+            ["自动 LLM"],
+            [""],
+            ["CUSTOM GLOBAL"],
+            ["手动覆盖全部 Global"],
+            automatic,
+        )
+        self.assertEqual(global_prompt, "CUSTOM GLOBAL")
+        self.assertEqual(generation, ["CUSTOM GLOBAL, 分镜 01/01，女孩站立"])
+
+        generation, _, global_prompt, _, _ = RH_StoryboardPromptSource_Node().select_prompts(
+            ["自动 LLM"],
+            [""],
+            ["extra continuity rule"],
+            ["追加到自动 Global"],
+            automatic,
+        )
+        self.assertIn("人物连续性锁定", global_prompt)
+        self.assertIn("extra continuity rule", global_prompt)
+        self.assertIn("extra continuity rule", generation[0])
 
     def test_global_split_keeps_scene_specific_supporting_character_lock(self):
         primary = 'primary: {"character_id":"primary","identity":"girl"}'
@@ -1041,7 +1105,8 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         links = {link[0]: link for link in workflow["links"]}
         self.assertEqual(nodes[2704]["type"], "RH_STORYBOARD_PROMPT_SOURCE")
         self.assertEqual(nodes[2704]["widgets_values"][0], "自动 LLM")
-        self.assertEqual(len(nodes[2704]["widgets_values"]), 3)
+        self.assertEqual(len(nodes[2704]["widgets_values"]), 4)
+        self.assertEqual(nodes[2704]["widgets_values"][3], "自动提取")
         self.assertEqual(nodes[2705]["type"], "PreviewAny")
         self.assertEqual(links[30175][1:6], [100, 0, 2704, 0, "STRING"])
         self.assertEqual(links[30139][1:6], [2704, 0, 34, 1, "STRING"])

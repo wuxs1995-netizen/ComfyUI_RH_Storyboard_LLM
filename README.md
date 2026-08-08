@@ -79,7 +79,7 @@ The parser raises a clear error when the local model returns fewer usable prompt
 
 Switches the image and downstream video prompt source between the generated storyboard list and user-edited final prompts. The automatic input is lazy: when `手动粘贴` is selected, ComfyUI does not evaluate the connected Qwen/LLM branch.
 
-The node separates repeated character/style/aspect locks into one `global_prompt`. Its clean `scene_prompts` output contains only the scene number, current action and shot description for previewing, copying, editing and MiniMax compilation. `generation_prompts` adds the global lock back immediately before Krea generation. The manual field accepts a JSON string array, one complete prompt per line, or multiline prompts separated by a line containing `---`.
+The node separates repeated character/style/aspect locks into one `global_prompt`. Its clean `scene_prompts` output contains only the scene number, current action and shot description for previewing, copying, editing and MiniMax compilation. `generation_prompts` adds the global lock back immediately before Krea generation. Automatic LLM mode supports automatic extraction, manual character replacement while preserving generated style/aspect, complete Global replacement, or appending custom continuity rules. The manual field accepts a JSON string array, one complete prompt per line, or multiline prompts separated by a line containing `---`.
 
 ### RH Storyboard - Save Numbered Scenes
 

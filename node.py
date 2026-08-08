@@ -724,6 +724,45 @@ def combine_storyboard_global_prompt(global_prompt, scene_prompt):
     return f"{global_text}, {scene_text}"
 
 
+def combine_storyboard_global_layers(automatic_global, custom_global):
+    parts = []
+    for value in (automatic_global, custom_global):
+        text = str(value or "").strip().rstrip(",， ")
+        if text and text not in parts:
+            parts.append(text)
+    return ", ".join(parts)
+
+
+def replace_storyboard_character_global(automatic_global, character_prompt):
+    global_text = str(automatic_global or "").strip()
+    custom_text = str(character_prompt or "").strip().rstrip(",， ")
+    if not custom_text:
+        return global_text
+    language = "English" if "CHARACTER CONTINUITY LOCK" in global_text else "中文"
+    parts = _locked_prefix_parts(global_text, language)
+    if not parts:
+        return custom_text
+
+    for label, style_marker in (
+        (
+            "CHARACTER CONTINUITY LOCK (identical in every shot; do not alter): ",
+            ", STYLE LOCK: ",
+        ),
+        ("人物连续性锁定（所有镜头必须完全一致，不得改动）：", ", 视觉风格锁定："),
+    ):
+        if label in custom_text:
+            custom_text = custom_text.split(label, 1)[1]
+            if style_marker in custom_text:
+                custom_text = custom_text.split(style_marker, 1)[0]
+            custom_text = custom_text.strip().rstrip(",， ")
+            break
+
+    rebuilt = [parts["ratio"], f"{parts['character_label']}{custom_text}"]
+    if parts["style_anchor"]:
+        rebuilt.append(f"{parts['style_label']}{parts['style_anchor']}")
+    return ", ".join(item for item in rebuilt if item)
+
+
 REF2V_REFERENCE_MODES = (
     "one_picture_per_shot",
     "first_picture_for_all_shots",
@@ -2447,6 +2486,12 @@ class RH_StoryboardPromptSource_Node:
 
     AUTO_MODE = "自动 LLM"
     MANUAL_MODE = "手动粘贴"
+    AUTO_GLOBAL_MODES = (
+        "自动提取",
+        "手动人物覆盖（保留风格/画幅）",
+        "手动覆盖全部 Global",
+        "追加到自动 Global",
+    )
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -2467,12 +2512,19 @@ class RH_StoryboardPromptSource_Node:
                         "placeholder": "支持 JSON 数组、每镜一行；多行提示词之间用 --- 分隔",
                     },
                 ),
-                "manual_global_prompt": (
+                "global_prompt_override": (
                     "STRING",
                     {
                         "multiline": True,
                         "default": "",
-                        "placeholder": "人物连续性、视觉风格、画幅等全局锁定；仅在生图前添加",
+                        "placeholder": "自动模式可填写人物连续性覆盖；手动模式作为完整 Global 使用",
+                    },
+                ),
+                "automatic_global_mode": (
+                    cls.AUTO_GLOBAL_MODES,
+                    {
+                        "default": "自动提取",
+                        "tooltip": "自动 LLM 下可覆盖人物锁定、覆盖全部 Global，或追加自定义要求。",
                     },
                 ),
             },
@@ -2504,7 +2556,8 @@ class RH_StoryboardPromptSource_Node:
         self,
         source_mode,
         manual_prompts,
-        manual_global_prompt,
+        global_prompt_override,
+        automatic_global_mode,
         automatic_prompts=None,
     ):
         mode = str(self._first(source_mode) or self.AUTO_MODE)
@@ -2516,13 +2569,18 @@ class RH_StoryboardPromptSource_Node:
         self,
         source_mode,
         manual_prompts,
-        manual_global_prompt,
+        global_prompt_override,
+        automatic_global_mode,
         automatic_prompts=None,
     ):
         mode = str(self._first(source_mode) or self.AUTO_MODE)
+        custom_global = str(self._first(global_prompt_override) or "").strip()
+        global_mode = str(
+            self._first(automatic_global_mode) or self.AUTO_GLOBAL_MODES[0]
+        )
         if mode == self.MANUAL_MODE:
             scene_prompts = parse_manual_storyboard_prompts(self._first(manual_prompts))
-            global_prompt = str(self._first(manual_global_prompt) or "").strip()
+            global_prompt = custom_global
             generation_prompts = [
                 combine_storyboard_global_prompt(global_prompt, prompt)
                 for prompt in scene_prompts
@@ -2537,13 +2595,35 @@ class RH_StoryboardPromptSource_Node:
                 if isinstance(automatic_prompts, (list, tuple))
                 else [automatic_prompts]
             )
-            generation_prompts = [str(value or "").strip() for value in values]
-            generation_prompts = [prompt for prompt in generation_prompts if prompt]
-            if not generation_prompts:
+            automatic_generation = [str(value or "").strip() for value in values]
+            automatic_generation = [prompt for prompt in automatic_generation if prompt]
+            if not automatic_generation:
                 raise ValueError("The automatic storyboard prompt list is empty.")
-            global_prompt, scene_prompts = separate_storyboard_global_prompt(
-                generation_prompts
+            detected_global, scene_prompts = separate_storyboard_global_prompt(
+                automatic_generation
             )
+            if global_mode == "手动人物覆盖（保留风格/画幅）":
+                global_prompt = replace_storyboard_character_global(
+                    detected_global,
+                    custom_global,
+                )
+            elif global_mode == "手动覆盖全部 Global":
+                global_prompt = custom_global
+            elif global_mode == "追加到自动 Global":
+                global_prompt = combine_storyboard_global_layers(
+                    detected_global,
+                    custom_global,
+                )
+            else:
+                global_prompt = detected_global
+
+            if global_mode == "自动提取":
+                generation_prompts = automatic_generation
+            else:
+                generation_prompts = [
+                    combine_storyboard_global_prompt(global_prompt, prompt)
+                    for prompt in scene_prompts
+                ]
         return (
             generation_prompts,
             scene_prompts,

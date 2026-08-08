@@ -1,6 +1,6 @@
 {
   "id": "rh-krea2-manual-prompt-override",
-  "revision": 22,
+  "revision": 23,
   "last_node_id": 2705,
   "last_link_id": 30176,
   "nodes": [
@@ -2957,7 +2957,7 @@
       ],
       "size": [
         550,
-        510
+        590
       ],
       "flags": {},
       "order": 67,
@@ -3019,7 +3019,8 @@
       "widgets_values": [
         "自动 LLM",
         "",
-        ""
+        "",
+        "自动提取"
       ],
       "color": "#31543d",
       "bgcolor": "#467855"
@@ -12656,6 +12657,12 @@
       "manual_mode": "手动粘贴",
       "lazy_automatic_input": true,
       "global_prompt_split": true,
+      "automatic_global_modes": [
+        "自动提取",
+        "手动人物覆盖（保留风格/画幅）",
+        "手动覆盖全部 Global",
+        "追加到自动 Global"
+      ],
       "manual_formats": [
         "JSON string array",
         "one complete prompt per line",
