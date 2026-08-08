@@ -78,12 +78,20 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertTrue(automatic_spec[1]["lazy"])
         self.assertTrue(automatic_spec[1]["forceInput"])
         self.assertEqual(
-            source.check_lazy_status(["手动粘贴"], ["edited prompt"]),
+            source.check_lazy_status(["手动粘贴"], ["edited prompt"], (None,)),
             [],
         )
         self.assertEqual(
-            source.check_lazy_status(["自动 LLM"], [""]),
+            source.check_lazy_status(["自动 LLM"], [""], (None,)),
             ["automatic_prompts"],
+        )
+        self.assertEqual(
+            source.check_lazy_status(
+                ["自动 LLM"],
+                [""],
+                ["generated prompt"],
+            ),
+            [],
         )
         prompts, count, active = source.select_prompts(
             ["手动粘贴"],

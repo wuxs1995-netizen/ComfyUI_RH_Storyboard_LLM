@@ -2365,7 +2365,7 @@ class RH_StoryboardPromptSource_Node:
         automatic_prompts=None,
     ):
         mode = str(self._first(source_mode) or self.AUTO_MODE)
-        if mode == self.AUTO_MODE and automatic_prompts is None:
+        if mode == self.AUTO_MODE and self._first(automatic_prompts) is None:
             return ["automatic_prompts"]
         return []
 
