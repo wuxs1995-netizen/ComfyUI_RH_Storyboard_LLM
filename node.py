@@ -534,11 +534,124 @@ REF2V_REFERENCE_MODES = (
     "text_only",
 )
 
+MINIMAX_H3_MODES = ("T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA")
+
 
 def _ref2v_first(value, default=None):
     if isinstance(value, (list, tuple)):
         return value[0] if value else default
     return value if value is not None else default
+
+
+def _minimax_h3_align_frame_count(frame_count):
+    """Snap a MiniMax H3 frame count to the native 17k+5 temporal grid."""
+    frame_count = max(5, int(frame_count))
+    while frame_count % 17 != 5:
+        frame_count += 1
+    return frame_count
+
+
+def _minimax_storyboard_frames(images):
+    """Flatten ComfyUI IMAGE lists/batches into one-frame IMAGE tensors."""
+    frames = []
+
+    def append(value):
+        if value is None:
+            return
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                append(item)
+            return
+        ndim = getattr(value, "ndim", None)
+        if ndim == 3:
+            value = value.unsqueeze(0)
+            ndim = 4
+        if ndim != 4:
+            raise ValueError(
+                "MiniMax storyboard images must be ComfyUI IMAGE tensors with shape "
+                "[batch, height, width, channels]."
+            )
+        for index in range(int(value.shape[0])):
+            frames.append(value[index : index + 1])
+
+    append(images)
+    return frames
+
+
+def _minimax_evenly_spaced_indices(count, limit):
+    """Choose references across the whole storyboard while preserving endpoints."""
+    count = max(0, int(count))
+    limit = max(1, int(limit))
+    if count <= limit:
+        return list(range(count))
+    if limit == 1:
+        return [0]
+    return [round(index * (count - 1) / (limit - 1)) for index in range(limit)]
+
+
+def _minimax_inject_picture_definitions(prompt, scene_indices):
+    """Ensure a REF2VA prompt names every tensor reference supplied by the adapter."""
+    prompt = str(prompt or "").strip()
+    existing = {
+        int(value)
+        for value in re.findall(r"<Picture\s+(\d+)>", prompt, flags=re.IGNORECASE)
+    }
+    definitions = []
+    for picture_number, scene_index in enumerate(scene_indices, start=1):
+        if picture_number in existing:
+            continue
+        definitions.append(
+            f"<Picture {picture_number}>: storyboard reference frame from [Shot {scene_index + 1}]; "
+            "preserve its visible identity, costume, environment, composition and action cues."
+        )
+    if not definitions:
+        return prompt
+    block = "\n".join(definitions)
+    header = re.search(r"(?im)^subject_definitions\s*:\s*$", prompt)
+    if header:
+        return prompt[: header.end()] + "\n" + block + prompt[header.end() :]
+    return f"subject_definitions:\n{block}\n\n{prompt}".strip()
+
+
+def _minimax_base_prompt(
+    mode,
+    description,
+    soundscape,
+    music,
+    snapped_seconds,
+    storyboard_count,
+    selected_count,
+):
+    description = str(description or "").strip()
+    soundscape = str(soundscape or "").strip()
+    music = str(music or "N/A").strip() or "N/A"
+    head = ""
+    if mode == "I2VA" or (mode == "FL2VA" and selected_count == 1):
+        head = (
+            "For the target video, at 0.00 seconds into the target video, "
+            "<Picture 1> (from [Shot 1]) is fully referenced."
+        )
+    elif mode == "FL2VA":
+        last_shot = max(1, int(storyboard_count))
+        head = (
+            "How the reference pictures align with the target video — "
+            "Picture 1 (from Shot 1) aligns with the 0.00-second mark of the target video; "
+            f"Picture 2 (from Shot {last_shot}) aligns with the {snapped_seconds:.2f}-second "
+            "mark of the target video."
+        )
+    elif mode == "L2VA":
+        last_shot = max(1, int(storyboard_count))
+        head = (
+            "How the reference pictures align with the target video — "
+            f"<Picture 1> (from [Shot {last_shot}]) aligns with the "
+            f"{snapped_seconds:.2f}-second mark of the target video."
+        )
+    body = (
+        f"integrated_multimodal_description: {description}\n\n"
+        f"overall_soundscape: {soundscape}\n\n"
+        f"non_diegetic_music: {music}"
+    )
+    return f"{head}\n\n{body}" if head else body
 
 
 def _ref2v_scene_prompt(scene):
@@ -1396,7 +1509,10 @@ class RH_REF2VStoryboardPrompt_Node:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "storyboard_texts": ("STRING", {"forceInput": True}),
+                "storyboard_texts": (
+                    "STRING",
+                    {"default": "", "multiline": True, "defaultInput": True},
+                ),
                 "seconds_per_shot": (
                     "FLOAT",
                     {"default": 4.5, "min": 0.1, "max": 60.0, "step": 0.1},
@@ -1465,6 +1581,223 @@ class RH_REF2VStoryboardPrompt_Node:
             overall_soundscape=str(_ref2v_first(overall_soundscape, "") or ""),
             non_diegetic_music=str(_ref2v_first(non_diegetic_music, "N/A") or "N/A"),
         )
+
+
+class RH_StoryboardImageCollector_Node:
+    """Collect ComfyUI list-mapped IMAGE results into one reusable storyboard value."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"images": ("IMAGE", {"forceInput": True})}}
+
+    RETURN_TYPES = ("RH_STORYBOARD_IMAGES", "INT")
+    RETURN_NAMES = ("storyboard_images", "image_count")
+    INPUT_IS_LIST = True
+    FUNCTION = "collect"
+    CATEGORY = "Runninghub/Storyboard/Video"
+
+    def collect(self, images):
+        frames = _minimax_storyboard_frames(images)
+        if not frames:
+            raise ValueError("Storyboard image collector received no images.")
+        return frames, len(frames)
+
+
+class RH_MiniMaxH3Settings_Node:
+    """Expose MiniMax mode and reference settings as linkable scalar outputs."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "mode": (MINIMAX_H3_MODES, {"default": "FL2VA"}),
+                "width": ("INT", {"default": 768, "min": 32, "max": 8192, "step": 32}),
+                "height": ("INT", {"default": 768, "min": 32, "max": 8192, "step": 32}),
+                "duration": ("INT", {"default": 18, "min": 1, "max": 1000}),
+                "ref_image_size": (("match", "max"), {"default": "match"}),
+                "max_reference_images": (
+                    "INT",
+                    {"default": 9, "min": 1, "max": 9, "step": 1},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("COMBO", "INT", "INT", "INT", "COMBO", "INT")
+    RETURN_NAMES = (
+        "mode",
+        "width",
+        "height",
+        "duration",
+        "ref_image_size",
+        "max_reference_images",
+    )
+    FUNCTION = "values"
+    CATEGORY = "Runninghub/Storyboard/Video"
+
+    def values(self, mode, width, height, duration, ref_image_size, max_reference_images):
+        mode = str(mode or "FL2VA").upper()
+        if mode not in MINIMAX_H3_MODES:
+            raise ValueError(f"Unsupported MiniMax H3 mode: {mode}")
+        return (
+            mode,
+            int(width),
+            int(height),
+            max(1, int(duration)),
+            str(ref_image_size or "match"),
+            max(1, min(9, int(max_reference_images))),
+        )
+
+
+class RH_MiniMaxH3StoryboardGuide_Node:
+    """Map a storyboard IMAGE batch directly into DaSiWa's MiniMax H3 guide type."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "storyboard_images": ("RH_STORYBOARD_IMAGES", {"forceInput": True}),
+                "mode": (MINIMAX_H3_MODES, {"forceInput": True}),
+                "ref2v_prompt": ("STRING", {"forceInput": True}),
+                "detailed_description": ("STRING", {"forceInput": True}),
+                "overall_soundscape": ("STRING", {"forceInput": True}),
+                "non_diegetic_music": ("STRING", {"forceInput": True}),
+                "width": ("INT", {"forceInput": True}),
+                "height": ("INT", {"forceInput": True}),
+                "duration": ("INT", {"forceInput": True}),
+                "ref_image_size": (("match", "max"), {"forceInput": True}),
+                "max_reference_images": (
+                    "INT",
+                    {"forceInput": True},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("MINIMAX_H3_DIRECTOR_GUIDE", "INT", "STRING")
+    RETURN_NAMES = ("guide", "selected_image_count", "mapping_summary")
+    FUNCTION = "build_guide"
+    CATEGORY = "Runninghub/Storyboard/Video"
+
+    def build_guide(
+        self,
+        storyboard_images,
+        mode,
+        ref2v_prompt,
+        detailed_description,
+        overall_soundscape,
+        non_diegetic_music,
+        width=1344,
+        height=768,
+        duration=5,
+        ref_image_size="match",
+        max_reference_images=9,
+    ):
+        mode = str(_ref2v_first(mode, "FL2VA") or "FL2VA").upper()
+        if mode not in MINIMAX_H3_MODES:
+            raise ValueError(f"Unsupported MiniMax H3 mode: {mode}")
+
+        frames = _minimax_storyboard_frames(storyboard_images)
+        storyboard_count = len(frames)
+        if mode != "T2VA" and not frames:
+            raise ValueError(f"{mode} requires at least one storyboard image.")
+
+        duration_value = max(1, int(_ref2v_first(duration, 5)))
+        length = _minimax_h3_align_frame_count(duration_value * 24)
+        snapped_seconds = length / 24.0
+        width_value = int(_ref2v_first(width, 1344))
+        height_value = int(_ref2v_first(height, 768))
+        ref_size = str(_ref2v_first(ref_image_size, "match") or "match")
+        full_prompt = str(_ref2v_first(ref2v_prompt, "") or "")
+        description = str(_ref2v_first(detailed_description, "") or "")
+        if not description.strip():
+            description = full_prompt
+        soundscape = str(_ref2v_first(overall_soundscape, "") or "")
+        music = str(_ref2v_first(non_diegetic_music, "N/A") or "N/A")
+
+        first_frame = None
+        last_frame = None
+        ref_images = {}
+        selected_indices = []
+        if mode == "I2VA":
+            selected_indices = [0]
+            first_frame = frames[0]
+        elif mode == "L2VA":
+            selected_indices = [storyboard_count - 1]
+            last_frame = frames[-1]
+        elif mode == "FL2VA":
+            selected_indices = [0]
+            first_frame = frames[0]
+            if storyboard_count > 1:
+                selected_indices.append(storyboard_count - 1)
+                last_frame = frames[-1]
+        elif mode == "REF2VA":
+            limit = max(1, min(9, int(_ref2v_first(max_reference_images, 9))))
+            selected_indices = _minimax_evenly_spaced_indices(storyboard_count, limit)
+            ref_images = {
+                f"ref_image_{picture_number}": frames[scene_index]
+                for picture_number, scene_index in enumerate(selected_indices, start=1)
+            }
+
+        if mode == "REF2VA":
+            resolved_prompt = _minimax_inject_picture_definitions(
+                full_prompt,
+                selected_indices,
+            )
+        else:
+            resolved_prompt = _minimax_base_prompt(
+                mode,
+                description,
+                soundscape,
+                music,
+                snapped_seconds,
+                storyboard_count,
+                len(selected_indices),
+            )
+
+        guide = {
+            "version": 2,
+            "mode": mode,
+            "prompt": full_prompt,
+            "prompt_blocks": [],
+            "resolved_prompt": resolved_prompt,
+            "width": width_value,
+            "height": height_value,
+            "length": length,
+            "ref_image_size": ref_size,
+            "first_frame": first_frame,
+            "last_frame": last_frame,
+            "ref_images": ref_images,
+            "ref_videos": {},
+            "ref_video_audios": {},
+            "ref_audios": {},
+            "timeline": [
+                {
+                    "type": "image",
+                    "picture": picture_number,
+                    "source_scene": scene_index + 1,
+                    "order": picture_number - 1,
+                }
+                for picture_number, scene_index in enumerate(selected_indices, start=1)
+            ],
+        }
+
+        if mode == "T2VA":
+            mapping_summary = f"T2VA: ignored {storyboard_count} storyboard image(s)."
+        elif mode == "REF2VA":
+            mapping_summary = "REF2VA: " + ", ".join(
+                f"Picture {number} <- Scene {scene_index + 1:02d}"
+                for number, scene_index in enumerate(selected_indices, start=1)
+            )
+        elif mode == "I2VA":
+            mapping_summary = "I2VA: first_frame <- Scene 01"
+        elif mode == "L2VA":
+            mapping_summary = f"L2VA: last_frame <- Scene {storyboard_count:02d}"
+        elif len(selected_indices) == 1:
+            mapping_summary = "FL2VA: first_frame <- Scene 01 (one image available)"
+        else:
+            mapping_summary = (
+                f"FL2VA: first_frame <- Scene 01; last_frame <- Scene {storyboard_count:02d}"
+            )
+        return guide, len(selected_indices), mapping_summary
 
 
 class RH_OfflineStoryboardRequest_Node:

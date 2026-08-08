@@ -9,6 +9,8 @@ from node import (
     RH_ConfigurableStoryboardContinuity_Node,
     RH_ConfigurableStoryboard_Node,
     RH_MultiSceneContinuityLLM_Node,
+    RH_MiniMaxH3StoryboardGuide_Node,
+    RH_MiniMaxH3Settings_Node,
     RH_OfflineStoryboardContinuityParser_Node,
     RH_OfflineStoryboardContinuityRequest_Node,
     RH_OfflineStoryboardContinuitySceneRequests_Node,
@@ -17,6 +19,7 @@ from node import (
     RH_OfflineStoryboardSceneRequests_Node,
     RH_REF2VStoryboardPrompt_Node,
     RH_StoryboardScenePrefixes_Node,
+    RH_StoryboardImageCollector_Node,
     _build_continuity_scene_request,
     _extract_api_image_bytes,
     _locked_continuity_prompt,
@@ -27,7 +30,119 @@ from node import (
 )
 
 
+class FakeImageBatch:
+    def __init__(self, indices, ndim=4):
+        self.indices = list(indices)
+        self.ndim = ndim
+        self.shape = (
+            (len(self.indices), 64, 64, 3)
+            if ndim == 4
+            else (64, 64, 3)
+        )
+
+    def unsqueeze(self, axis):
+        if axis != 0 or self.ndim != 3:
+            raise AssertionError("Unexpected fake tensor unsqueeze")
+        return FakeImageBatch(self.indices, ndim=4)
+
+    def __getitem__(self, item):
+        return FakeImageBatch(self.indices[item], ndim=4)
+
+
 class OfflineStoryboardParserTests(unittest.TestCase):
+    def test_minimax_settings_exposes_linkable_validated_values(self):
+        result = RH_MiniMaxH3Settings_Node().values(
+            "ref2va", 1024, 576, 18, "max", 99
+        )
+        self.assertEqual(result, ("REF2VA", 1024, 576, 18, "max", 9))
+        self.assertEqual(
+            RH_MiniMaxH3Settings_Node.RETURN_NAMES,
+            (
+                "mode",
+                "width",
+                "height",
+                "duration",
+                "ref_image_size",
+                "max_reference_images",
+            ),
+        )
+
+    def test_ref2v_storyboard_input_is_linkable_and_widget_serializable(self):
+        storyboard_spec = RH_REF2VStoryboardPrompt_Node.INPUT_TYPES()["required"][
+            "storyboard_texts"
+        ]
+        self.assertEqual(storyboard_spec[0], "STRING")
+        self.assertTrue(storyboard_spec[1]["defaultInput"])
+        self.assertEqual(storyboard_spec[1]["default"], "")
+        self.assertTrue(storyboard_spec[1]["multiline"])
+
+    def _build_minimax_guide(self, mode, image_count=4, max_refs=9):
+        return RH_MiniMaxH3StoryboardGuide_Node().build_guide(
+            [FakeImageBatch(range(image_count))],
+            [mode],
+            ["subject_definitions:\n\nsummary:\nStoryboard video"],
+            ["[Shot 1] opening frame\n[Shot 4] ending frame"],
+            ["footsteps and room tone"],
+            ["N/A"],
+            [1024],
+            [576],
+            [8],
+            ["match"],
+            [max_refs],
+        )
+
+    def test_minimax_storyboard_guide_maps_endpoint_modes(self):
+        i2v, count, summary, *_ = self._build_minimax_guide("I2VA")
+        self.assertEqual(count, 1)
+        self.assertEqual(i2v["first_frame"].indices, [0])
+        self.assertIsNone(i2v["last_frame"])
+        self.assertIn("0.00 seconds", i2v["resolved_prompt"])
+        self.assertIn("first_frame <- Scene 01", summary)
+
+        l2v, count, summary, *_ = self._build_minimax_guide("L2VA")
+        self.assertEqual(count, 1)
+        self.assertIsNone(l2v["first_frame"])
+        self.assertEqual(l2v["last_frame"].indices, [3])
+        self.assertIn("Shot 4", l2v["resolved_prompt"])
+        self.assertIn("last_frame <- Scene 04", summary)
+
+        fl2v, count, summary, *_ = self._build_minimax_guide("FL2VA")
+        self.assertEqual(count, 2)
+        self.assertEqual(fl2v["first_frame"].indices, [0])
+        self.assertEqual(fl2v["last_frame"].indices, [3])
+        self.assertIn("Picture 2 (from Shot 4)", fl2v["resolved_prompt"])
+        self.assertIn("last_frame <- Scene 04", summary)
+
+    def test_minimax_storyboard_guide_t2va_ignores_images(self):
+        guide, count, summary, *_ = self._build_minimax_guide("T2VA")
+        self.assertEqual(count, 0)
+        self.assertIsNone(guide["first_frame"])
+        self.assertIsNone(guide["last_frame"])
+        self.assertEqual(guide["ref_images"], {})
+        self.assertIn("ignored 4 storyboard image", summary)
+        self.assertIn("integrated_multimodal_description", guide["resolved_prompt"])
+
+    def test_minimax_storyboard_guide_ref2va_evenly_samples_nine_images(self):
+        guide, count, summary, *_ = self._build_minimax_guide("REF2VA", image_count=12)
+        self.assertEqual(count, 9)
+        self.assertEqual(len(guide["ref_images"]), 9)
+        self.assertEqual(guide["ref_images"]["ref_image_1"].indices, [0])
+        self.assertEqual(guide["ref_images"]["ref_image_9"].indices, [11])
+        self.assertIn("<Picture 9>", guide["resolved_prompt"])
+        self.assertIn("[Shot 12]", guide["resolved_prompt"])
+        self.assertIn("Picture 9 <- Scene 12", summary)
+
+    def test_minimax_storyboard_guide_requires_images_outside_t2va(self):
+        with self.assertRaisesRegex(ValueError, "I2VA requires at least one storyboard image"):
+            self._build_minimax_guide("I2VA", image_count=0)
+
+    def test_storyboard_image_collector_flattens_list_mapped_batches(self):
+        images, count = RH_StoryboardImageCollector_Node().collect(
+            [FakeImageBatch([0, 1]), FakeImageBatch([2, 3])]
+        )
+        self.assertEqual(count, 4)
+        self.assertEqual([image.indices for image in images], [[0], [1], [2], [3]])
+
     def test_ref2v_compiles_prompt_list_into_six_sections(self):
         result = build_ref2v_prompt_fields(
             ["wide shot of a woman entering the station", "close-up as she opens a letter"],
@@ -762,6 +877,38 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
         self.assertFalse(any(node.get("type") == "PreviewImage" for node in workflow["nodes"]))
         self.assertTrue(any(node.get("type") == "RH_STORYBOARD_SCENE_SAVE" for node in workflow["nodes"]))
+
+    def test_minimax_v91_workflow_links_storyboard_images_for_all_modes(self):
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "RH_Krea2_Offline_Qwen3VL_Klein_MinimaxH3_StoryboardModes_v9.1.json"
+        )
+        workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+        nodes = {node["id"]: node for node in workflow["nodes"]}
+        self.assertEqual(nodes[1392]["type"], "RH_STORYBOARD_IMAGE_COLLECTOR")
+        self.assertEqual(nodes[1393]["type"], "RH_MINIMAX_H3_SETTINGS")
+        self.assertEqual(nodes[1394]["type"], "RH_MINIMAX_H3_STORYBOARD_GUIDE")
+        self.assertEqual(nodes[1393]["widgets_values"], ["FL2VA", 768, 768, 18, "match", 9])
+        self.assertEqual(nodes[1394]["inputs"][0]["link"], 30175)
+        self.assertEqual(nodes[1389]["inputs"][0]["link"], 30188)
+        self.assertEqual(nodes[1389]["inputs"][2]["link"], 30189)
+        self.assertEqual(nodes[1389]["inputs"][7]["link"], 30186)
+
+        minimax = next(
+            item
+            for item in workflow["definitions"]["subgraphs"]
+            if item["id"] == workflow["extra"]["rh_minimax_h3"]["subgraph_id"]
+        )
+        guide_links = [
+            link
+            for link in minimax["links"]
+            if link["type"] == "MINIMAX_H3_DIRECTOR_GUIDE"
+        ]
+        self.assertEqual([link["id"] for link in guide_links], [6010])
+        self.assertEqual(guide_links[0]["origin_id"], -10)
+        self.assertEqual(guide_links[0]["target_id"], 1512)
+        self.assertNotIn("10eros", workflow_path.read_text(encoding="utf-8").lower())
 
     def test_optional_i2v_workflow_uses_resolution_master_and_has_no_temp_outputs(self):
         workflow_path = (
