@@ -596,6 +596,134 @@ def parse_manual_storyboard_prompts(manual_text):
     return prompts
 
 
+def _split_locked_storyboard_prompt(prompt):
+    text = str(prompt or "").strip()
+    for marker, language in ((", CURRENT SHOT: ", "English"), (", 当前镜头：", "中文")):
+        if marker in text:
+            prefix, scene_prompt = text.split(marker, 1)
+            return prefix.strip(), scene_prompt.strip(), language
+    return None
+
+
+def _locked_prefix_parts(prefix, language):
+    if language == "English":
+        character_label = "CHARACTER CONTINUITY LOCK (identical in every shot; do not alter): "
+        style_marker = ", STYLE LOCK: "
+    else:
+        character_label = "人物连续性锁定（所有镜头必须完全一致，不得改动）："
+        style_marker = ", 视觉风格锁定："
+    character_marker = f", {character_label}"
+    if character_marker not in prefix:
+        return None
+    ratio, remainder = prefix.split(character_marker, 1)
+    if style_marker in remainder:
+        character_anchor, style_anchor = remainder.split(style_marker, 1)
+    else:
+        character_anchor, style_anchor = remainder, ""
+    return {
+        "ratio": ratio.strip(),
+        "character_anchor": character_anchor.strip(),
+        "style_anchor": style_anchor.strip(),
+        "character_label": character_label,
+        "style_label": "STYLE LOCK: " if language == "English" else "视觉风格锁定：",
+        "language": language,
+    }
+
+
+def _character_anchor_entries(anchor):
+    text = str(anchor or "").strip()
+    if not text:
+        return []
+    decoder = json.JSONDecoder()
+    entries = []
+    cursor = 0
+    while cursor < len(text):
+        while cursor < len(text) and (text[cursor].isspace() or text[cursor] == ";"):
+            cursor += 1
+        separator = text.find(":", cursor)
+        if separator < 0:
+            return [text]
+        key = text[cursor:separator].strip()
+        value_start = separator + 1
+        while value_start < len(text) and text[value_start].isspace():
+            value_start += 1
+        if not key or value_start >= len(text) or text[value_start] != "{":
+            return [text]
+        try:
+            _, value_end = decoder.raw_decode(text[value_start:])
+        except json.JSONDecodeError:
+            return [text]
+        absolute_end = value_start + value_end
+        entries.append(f"{key}: {text[value_start:absolute_end]}")
+        cursor = absolute_end
+    return entries or [text]
+
+
+def separate_storyboard_global_prompt(prompts):
+    """Move shared continuity/style locks out of editable per-scene prompts."""
+    values = [str(prompt or "").strip() for prompt in prompts if str(prompt or "").strip()]
+    if not values:
+        return "", []
+    parsed = [_split_locked_storyboard_prompt(prompt) for prompt in values]
+    if any(item is None for item in parsed):
+        return "", values
+
+    prefixes = [item[0] for item in parsed]
+    scene_prompts = [item[1] for item in parsed]
+    if all(prefix == prefixes[0] for prefix in prefixes[1:]):
+        return prefixes[0], scene_prompts
+
+    parts = [_locked_prefix_parts(item[0], item[2]) for item in parsed]
+    if any(item is None for item in parts):
+        return "", values
+    first = parts[0]
+    if any(
+        item["ratio"] != first["ratio"]
+        or item["style_anchor"] != first["style_anchor"]
+        or item["language"] != first["language"]
+        for item in parts[1:]
+    ):
+        return "", values
+
+    entry_lists = [_character_anchor_entries(item["character_anchor"]) for item in parts]
+    common_entries = [
+        entry for entry in entry_lists[0] if all(entry in entries for entries in entry_lists[1:])
+    ]
+    global_parts = [first["ratio"]]
+    if common_entries:
+        global_parts.append(f"{first['character_label']}{'; '.join(common_entries)}")
+    if first["style_anchor"]:
+        global_parts.append(f"{first['style_label']}{first['style_anchor']}")
+    global_prompt = ", ".join(part for part in global_parts if part)
+
+    cleaned = []
+    for scene_prompt, entries in zip(scene_prompts, entry_lists):
+        extras = [entry for entry in entries if entry not in common_entries]
+        if extras:
+            label = (
+                "SCENE-SPECIFIC CHARACTER LOCK: "
+                if first["language"] == "English"
+                else "本镜头额外人物锁定："
+            )
+            scene_prompt = f"{label}{'; '.join(extras)}, {scene_prompt}"
+        cleaned.append(scene_prompt)
+    return global_prompt, cleaned
+
+
+def combine_storyboard_global_prompt(global_prompt, scene_prompt):
+    global_text = str(global_prompt or "").strip().rstrip(",， ")
+    scene_text = str(scene_prompt or "").strip()
+    if not global_text:
+        return scene_text
+    if not scene_text:
+        return global_text
+    if "人物连续性锁定" in global_text or "视觉风格锁定" in global_text:
+        return f"{global_text}, 当前镜头：{scene_text}"
+    if "CHARACTER CONTINUITY LOCK" in global_text or "STYLE LOCK" in global_text:
+        return f"{global_text}, CURRENT SHOT: {scene_text}"
+    return f"{global_text}, {scene_text}"
+
+
 REF2V_REFERENCE_MODES = (
     "one_picture_per_shot",
     "first_picture_for_all_shots",
@@ -2315,7 +2443,7 @@ class RH_OfflineStoryboardParser_Node:
 
 
 class RH_StoryboardPromptSource_Node:
-    """Lazily choose generated prompts or a user-edited pasted prompt list."""
+    """Choose prompts lazily and keep global locks separate from creative scene text."""
 
     AUTO_MODE = "自动 LLM"
     MANUAL_MODE = "手动粘贴"
@@ -2339,15 +2467,29 @@ class RH_StoryboardPromptSource_Node:
                         "placeholder": "支持 JSON 数组、每镜一行；多行提示词之间用 --- 分隔",
                     },
                 ),
+                "manual_global_prompt": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "",
+                        "placeholder": "人物连续性、视觉风格、画幅等全局锁定；仅在生图前添加",
+                    },
+                ),
             },
             "optional": {
                 "automatic_prompts": ("STRING", {"lazy": True, "forceInput": True}),
             },
         }
 
-    RETURN_TYPES = ("STRING", "INT", "STRING")
-    RETURN_NAMES = ("selected_prompts", "scene_count", "active_source")
-    OUTPUT_IS_LIST = (True, False, False)
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "INT", "STRING")
+    RETURN_NAMES = (
+        "generation_prompts",
+        "scene_prompts",
+        "global_prompt",
+        "scene_count",
+        "active_source",
+    )
+    OUTPUT_IS_LIST = (True, True, False, False, False)
     INPUT_IS_LIST = True
     FUNCTION = "select_prompts"
     CATEGORY = "Runninghub/Storyboard"
@@ -2362,6 +2504,7 @@ class RH_StoryboardPromptSource_Node:
         self,
         source_mode,
         manual_prompts,
+        manual_global_prompt,
         automatic_prompts=None,
     ):
         mode = str(self._first(source_mode) or self.AUTO_MODE)
@@ -2373,11 +2516,17 @@ class RH_StoryboardPromptSource_Node:
         self,
         source_mode,
         manual_prompts,
+        manual_global_prompt,
         automatic_prompts=None,
     ):
         mode = str(self._first(source_mode) or self.AUTO_MODE)
         if mode == self.MANUAL_MODE:
-            prompts = parse_manual_storyboard_prompts(self._first(manual_prompts))
+            scene_prompts = parse_manual_storyboard_prompts(self._first(manual_prompts))
+            global_prompt = str(self._first(manual_global_prompt) or "").strip()
+            generation_prompts = [
+                combine_storyboard_global_prompt(global_prompt, prompt)
+                for prompt in scene_prompts
+            ]
         else:
             if automatic_prompts is None:
                 raise ValueError(
@@ -2388,11 +2537,20 @@ class RH_StoryboardPromptSource_Node:
                 if isinstance(automatic_prompts, (list, tuple))
                 else [automatic_prompts]
             )
-            prompts = [str(value or "").strip() for value in values]
-            prompts = [prompt for prompt in prompts if prompt]
-            if not prompts:
+            generation_prompts = [str(value or "").strip() for value in values]
+            generation_prompts = [prompt for prompt in generation_prompts if prompt]
+            if not generation_prompts:
                 raise ValueError("The automatic storyboard prompt list is empty.")
-        return prompts, len(prompts), mode
+            global_prompt, scene_prompts = separate_storyboard_global_prompt(
+                generation_prompts
+            )
+        return (
+            generation_prompts,
+            scene_prompts,
+            global_prompt,
+            len(scene_prompts),
+            mode,
+        )
 
 
 class RH_StoryboardSceneSave_Node:

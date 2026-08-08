@@ -1,8 +1,8 @@
 {
   "id": "rh-krea2-manual-prompt-override",
-  "revision": 21,
-  "last_node_id": 2704,
-  "last_link_id": 30175,
+  "revision": 22,
+  "last_node_id": 2705,
+  "last_link_id": 30176,
   "nodes": [
     {
       "id": 5,
@@ -2957,7 +2957,7 @@
       ],
       "size": [
         550,
-        430
+        510
       ],
       "flags": {},
       "order": 67,
@@ -2972,12 +2972,26 @@
       ],
       "outputs": [
         {
-          "name": "selected_prompts",
+          "name": "generation_prompts",
           "shape": 6,
           "type": "STRING",
           "links": [
-            30139,
+            30139
+          ]
+        },
+        {
+          "name": "scene_prompts",
+          "shape": 6,
+          "type": "STRING",
+          "links": [
             30140
+          ]
+        },
+        {
+          "name": "global_prompt",
+          "type": "STRING",
+          "links": [
+            30176
           ]
         },
         {
@@ -2991,10 +3005,10 @@
           "links": null
         }
       ],
-      "title": "提示词来源｜自动 LLM / 手动粘贴（手动时不运行 Qwen）",
+      "title": "提示词来源｜Global 锁定与 Scene 创作提示词分离",
       "properties": {
         "aux_id": "wuxs1995-netizen/ComfyUI_RH_Storyboard_LLM",
-        "ver": "manual-prompt-override-v1",
+        "ver": "global-prompt-split-v2",
         "Node name for S&R": "RH_STORYBOARD_PROMPT_SOURCE",
         "ue_properties": {
           "widget_ue_connectable": {},
@@ -3004,10 +3018,54 @@
       },
       "widgets_values": [
         "自动 LLM",
+        "",
         ""
       ],
       "color": "#31543d",
       "bgcolor": "#467855"
+    },
+    {
+      "id": 2705,
+      "type": "PreviewAny",
+      "pos": [
+        3290,
+        4700
+      ],
+      "size": [
+        550,
+        140
+      ],
+      "flags": {},
+      "order": 68,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 30176
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Global Prompt｜人物连续性 + 视觉风格 + 画幅（生图前统一添加）",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.30.0",
+        "Node name for S&R": "PreviewAny",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [],
+      "color": "#5b4324",
+      "bgcolor": "#806034"
     },
     {
       "id": 85,
@@ -3710,7 +3768,7 @@
           ]
         }
       ],
-      "title": "最终提示词｜SCENE 01/xx + 当前动作 + 人物锚点",
+      "title": "Scene 创作提示词｜分镜编号 + 当前动作（无 Global 前缀）",
       "properties": {
         "cnr_id": "comfy-core",
         "ver": "0.29.2",
@@ -4839,7 +4897,7 @@
     [
       30140,
       2704,
-      0,
+      1,
       95,
       0,
       "STRING"
@@ -5003,6 +5061,14 @@
       2704,
       0,
       "STRING"
+    ],
+    [
+      30176,
+      2704,
+      2,
+      2705,
+      0,
+      "STRING"
     ]
   ],
   "groups": [
@@ -5047,9 +5113,9 @@
       "title": "本地 Qwen3VL 两阶段忠实分镜 + 手动最终提示词直通",
       "bounding": [
         40,
-        4720,
+        4680,
         3837.67958543,
-        1061.579021130001
+        1160
       ],
       "color": "#4b5f89",
       "flags": {}
@@ -12527,7 +12593,7 @@
   },
   "config": {},
   "extra": {
-    "rh_workflow_version": "krea2-v9.0-manual-prompt-override",
+    "rh_workflow_version": "krea2-v9.0-global-and-scene-prompt-split",
     "rh_root_link_namespace": "300xx-rebuilt",
     "ue_links": [],
     "links_added_by_ue": [],
@@ -12589,15 +12655,16 @@
       "automatic_mode": "自动 LLM",
       "manual_mode": "手动粘贴",
       "lazy_automatic_input": true,
+      "global_prompt_split": true,
       "manual_formats": [
         "JSON string array",
         "one complete prompt per line",
         "multiline prompts separated by ---"
       ],
       "routes_to": [
-        "Krea2Image",
-        "final prompt preview",
-        "MiniMax storyboard prompt compiler"
+        "generation_prompts -> Krea2Image",
+        "scene_prompts -> clean creative preview and MiniMax compiler",
+        "global_prompt -> standalone preview"
       ]
     },
     "rh_asset_hygiene": {

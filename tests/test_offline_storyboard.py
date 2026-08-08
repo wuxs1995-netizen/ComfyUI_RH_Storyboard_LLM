@@ -30,6 +30,7 @@ from node import (
     build_ref2v_prompt_fields,
     parse_offline_storyboard_text,
     parse_manual_storyboard_prompts,
+    separate_storyboard_global_prompt,
 )
 
 
@@ -78,36 +79,93 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         self.assertTrue(automatic_spec[1]["lazy"])
         self.assertTrue(automatic_spec[1]["forceInput"])
         self.assertEqual(
-            source.check_lazy_status(["手动粘贴"], ["edited prompt"], (None,)),
+            source.check_lazy_status(["手动粘贴"], ["edited prompt"], [""], (None,)),
             [],
         )
         self.assertEqual(
-            source.check_lazy_status(["自动 LLM"], [""], (None,)),
+            source.check_lazy_status(["自动 LLM"], [""], [""], (None,)),
             ["automatic_prompts"],
         )
         self.assertEqual(
             source.check_lazy_status(
                 ["自动 LLM"],
                 [""],
+                [""],
                 ["generated prompt"],
             ),
             [],
         )
-        prompts, count, active = source.select_prompts(
+        generation, scenes, global_prompt, count, active = source.select_prompts(
             ["手动粘贴"],
             ["edited scene 1\nedited scene 2"],
+            ["GLOBAL LOCK"],
         )
-        self.assertEqual(prompts, ["edited scene 1", "edited scene 2"])
+        self.assertEqual(scenes, ["edited scene 1", "edited scene 2"])
+        self.assertEqual(
+            generation,
+            ["GLOBAL LOCK, edited scene 1", "GLOBAL LOCK, edited scene 2"],
+        )
+        self.assertEqual(global_prompt, "GLOBAL LOCK")
         self.assertEqual((count, active), (2, "手动粘贴"))
 
     def test_manual_prompt_source_passes_through_automatic_list(self):
-        prompts, count, active = RH_StoryboardPromptSource_Node().select_prompts(
+        generation, scenes, global_prompt, count, active = RH_StoryboardPromptSource_Node().select_prompts(
             ["自动 LLM"],
+            [""],
             [""],
             ["auto scene 1", "auto scene 2"],
         )
-        self.assertEqual(prompts, ["auto scene 1", "auto scene 2"])
+        self.assertEqual(generation, ["auto scene 1", "auto scene 2"])
+        self.assertEqual(scenes, generation)
+        self.assertEqual(global_prompt, "")
         self.assertEqual((count, active), (2, "自动 LLM"))
+
+    def test_prompt_source_separates_repeated_global_lock_from_scene_text(self):
+        prefix = (
+            '1:1, 人物连续性锁定（所有镜头必须完全一致，不得改动）：primary: '
+            '{"character_id":"primary","identity":"18岁中国少女"}, '
+            '视觉风格锁定：visual_style: 偷拍感; aspect_ratio: 1:1'
+        )
+        automatic = [
+            f"{prefix}, 当前镜头：分镜 01/02，女孩站在窗边",
+            f"{prefix}, 当前镜头：分镜 02/02，女孩回头看向镜头",
+        ]
+        global_prompt, scenes = separate_storyboard_global_prompt(automatic)
+        self.assertEqual(global_prompt, prefix)
+        self.assertEqual(
+            scenes,
+            ["分镜 01/02，女孩站在窗边", "分镜 02/02，女孩回头看向镜头"],
+        )
+        generation, selected, detected_global, count, _ = (
+            RH_StoryboardPromptSource_Node().select_prompts(
+                ["自动 LLM"], [""], [""], automatic
+            )
+        )
+        self.assertEqual(generation, automatic)
+        self.assertEqual(selected, scenes)
+        self.assertEqual(detected_global, prefix)
+        self.assertEqual(count, 2)
+
+    def test_global_split_keeps_scene_specific_supporting_character_lock(self):
+        primary = 'primary: {"character_id":"primary","identity":"girl"}'
+        courier = 'courier: {"character_id":"courier","identity":"man"}'
+        prompts = [
+            (
+                "1:1, 人物连续性锁定（所有镜头必须完全一致，不得改动）："
+                f"{primary}, 视觉风格锁定：visual_style: realism, "
+                "当前镜头：分镜 01/02，女孩独处"
+            ),
+            (
+                "1:1, 人物连续性锁定（所有镜头必须完全一致，不得改动）："
+                f"{primary}; {courier}, 视觉风格锁定：visual_style: realism, "
+                "当前镜头：分镜 02/02，信使出现"
+            ),
+        ]
+        global_prompt, scenes = separate_storyboard_global_prompt(prompts)
+        self.assertIn(primary, global_prompt)
+        self.assertNotIn(courier, global_prompt)
+        self.assertNotIn("额外人物锁定", scenes[0])
+        self.assertIn(f"本镜头额外人物锁定：{courier}", scenes[1])
 
     def test_minimax_model_selector_uses_guide_mode_and_lazy_model(self):
         selector = RH_MiniMaxH3ModelSelector_Node()
@@ -983,11 +1041,16 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         links = {link[0]: link for link in workflow["links"]}
         self.assertEqual(nodes[2704]["type"], "RH_STORYBOARD_PROMPT_SOURCE")
         self.assertEqual(nodes[2704]["widgets_values"][0], "自动 LLM")
+        self.assertEqual(len(nodes[2704]["widgets_values"]), 3)
+        self.assertEqual(nodes[2705]["type"], "PreviewAny")
         self.assertEqual(links[30175][1:6], [100, 0, 2704, 0, "STRING"])
         self.assertEqual(links[30139][1:6], [2704, 0, 34, 1, "STRING"])
-        self.assertEqual(links[30140][1:6], [2704, 0, 95, 0, "STRING"])
+        self.assertEqual(links[30140][1:6], [2704, 1, 95, 0, "STRING"])
+        self.assertEqual(links[30176][1:6], [2704, 2, 2705, 0, "STRING"])
         self.assertEqual(nodes[100]["outputs"][0]["links"], [30175])
-        self.assertEqual(nodes[2704]["outputs"][0]["links"], [30139, 30140])
+        self.assertEqual(nodes[2704]["outputs"][0]["links"], [30139])
+        self.assertEqual(nodes[2704]["outputs"][1]["links"], [30140])
+        self.assertEqual(nodes[2704]["outputs"][2]["links"], [30176])
 
     def test_minimax_v91_workflow_links_storyboard_images_for_all_modes(self):
         workflow_path = (
