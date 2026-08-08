@@ -21,6 +21,7 @@ from node import (
     RH_REF2VStoryboardPrompt_Node,
     RH_StoryboardScenePrefixes_Node,
     RH_StoryboardImageCollector_Node,
+    RH_StoryboardPromptSource_Node,
     _build_continuity_scene_request,
     _extract_api_image_bytes,
     _locked_continuity_prompt,
@@ -28,6 +29,7 @@ from node import (
     _scene_save_prefix,
     build_ref2v_prompt_fields,
     parse_offline_storyboard_text,
+    parse_manual_storyboard_prompts,
 )
 
 
@@ -51,6 +53,54 @@ class FakeImageBatch:
 
 
 class OfflineStoryboardParserTests(unittest.TestCase):
+    def test_manual_prompt_parser_accepts_json_list(self):
+        prompts = parse_manual_storyboard_prompts(
+            '["SCENE 01/02, first shot", "SCENE 02/02, second shot"]'
+        )
+        self.assertEqual(
+            prompts,
+            ["SCENE 01/02, first shot", "SCENE 02/02, second shot"],
+        )
+
+    def test_manual_prompt_parser_accepts_lines_and_multiline_blocks(self):
+        self.assertEqual(
+            parse_manual_storyboard_prompts("1. first shot\n2、second shot"),
+            ["first shot", "second shot"],
+        )
+        self.assertEqual(
+            parse_manual_storyboard_prompts("first line\ncontinued detail\n---\nsecond shot"),
+            ["first line\ncontinued detail", "second shot"],
+        )
+
+    def test_manual_prompt_source_skips_automatic_branch_in_manual_mode(self):
+        source = RH_StoryboardPromptSource_Node()
+        automatic_spec = source.INPUT_TYPES()["optional"]["automatic_prompts"]
+        self.assertTrue(automatic_spec[1]["lazy"])
+        self.assertTrue(automatic_spec[1]["forceInput"])
+        self.assertEqual(
+            source.check_lazy_status(["手动粘贴"], ["edited prompt"]),
+            [],
+        )
+        self.assertEqual(
+            source.check_lazy_status(["自动 LLM"], [""]),
+            ["automatic_prompts"],
+        )
+        prompts, count, active = source.select_prompts(
+            ["手动粘贴"],
+            ["edited scene 1\nedited scene 2"],
+        )
+        self.assertEqual(prompts, ["edited scene 1", "edited scene 2"])
+        self.assertEqual((count, active), (2, "手动粘贴"))
+
+    def test_manual_prompt_source_passes_through_automatic_list(self):
+        prompts, count, active = RH_StoryboardPromptSource_Node().select_prompts(
+            ["自动 LLM"],
+            [""],
+            ["auto scene 1", "auto scene 2"],
+        )
+        self.assertEqual(prompts, ["auto scene 1", "auto scene 2"])
+        self.assertEqual((count, active), (2, "自动 LLM"))
+
     def test_minimax_model_selector_uses_guide_mode_and_lazy_model(self):
         selector = RH_MiniMaxH3ModelSelector_Node()
         self.assertEqual(
@@ -913,6 +963,23 @@ class OfflineStoryboardParserTests(unittest.TestCase):
         workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
         self.assertFalse(any(node.get("type") == "PreviewImage" for node in workflow["nodes"]))
         self.assertTrue(any(node.get("type") == "RH_STORYBOARD_SCENE_SAVE" for node in workflow["nodes"]))
+
+    def test_manual_prompt_workflow_routes_parser_through_lazy_source(self):
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / "workflows"
+            / "RH_Krea2_Manual_Prompt_Override.json"
+        )
+        workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+        nodes = {node["id"]: node for node in workflow["nodes"]}
+        links = {link[0]: link for link in workflow["links"]}
+        self.assertEqual(nodes[2704]["type"], "RH_STORYBOARD_PROMPT_SOURCE")
+        self.assertEqual(nodes[2704]["widgets_values"][0], "自动 LLM")
+        self.assertEqual(links[30175][1:6], [100, 0, 2704, 0, "STRING"])
+        self.assertEqual(links[30139][1:6], [2704, 0, 34, 1, "STRING"])
+        self.assertEqual(links[30140][1:6], [2704, 0, 95, 0, "STRING"])
+        self.assertEqual(nodes[100]["outputs"][0]["links"], [30175])
+        self.assertEqual(nodes[2704]["outputs"][0]["links"], [30139, 30140])
 
     def test_minimax_v91_workflow_links_storyboard_images_for_all_modes(self):
         workflow_path = (

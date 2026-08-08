@@ -18,6 +18,7 @@ from .node import (
     RH_SceneJSONSplitter_Node,
     RH_StoryboardPromptSelector_Node,
     RH_StoryboardImageCollector_Node,
+    RH_StoryboardPromptSource_Node,
     RH_StoryboardScenePrefixes_Node,
     RH_StoryboardSceneSave_Node,
 )
@@ -43,6 +44,7 @@ NODE_CLASS_MAPPINGS = {
     "RH_REF2V_STORYBOARD_PROMPT": RH_REF2VStoryboardPrompt_Node,
     "RH_STORYBOARD_PROMPT_SELECTOR": RH_StoryboardPromptSelector_Node,
     "RH_STORYBOARD_IMAGE_COLLECTOR": RH_StoryboardImageCollector_Node,
+    "RH_STORYBOARD_PROMPT_SOURCE": RH_StoryboardPromptSource_Node,
     "RH_STORYBOARD_SCENE_PREFIXES": RH_StoryboardScenePrefixes_Node,
     "RH_STORYBOARD_SCENE_SAVE": RH_StoryboardSceneSave_Node,
 }
@@ -67,6 +69,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RH_REF2V_STORYBOARD_PROMPT": "RH Storyboard - REF2V Multi-Shot Prompt",
     "RH_STORYBOARD_PROMPT_SELECTOR": "RH Storyboard - Select Scene Prompt",
     "RH_STORYBOARD_IMAGE_COLLECTOR": "RH Storyboard - Collect Images for Video",
+    "RH_STORYBOARD_PROMPT_SOURCE": "RH Storyboard - Auto / Manual Prompt Source",
     "RH_STORYBOARD_SCENE_PREFIXES": "RH Storyboard - Scene Filename Prefixes",
     "RH_STORYBOARD_SCENE_SAVE": "RH Storyboard - Save Numbered Scenes",
 }

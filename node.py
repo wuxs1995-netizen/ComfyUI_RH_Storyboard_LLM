@@ -528,6 +528,74 @@ def parse_offline_storyboard_text(generated_text, scene_count, default_negative_
     return positive, negative, storyboard
 
 
+def parse_manual_storyboard_prompts(manual_text):
+    """Normalize copied final prompts into an ordered ComfyUI string list."""
+    text = str(manual_text or "").strip()
+    if not text:
+        raise ValueError("Manual storyboard prompts are empty.")
+
+    def prompt_from_item(item):
+        if isinstance(item, str):
+            return item.strip()
+        if isinstance(item, dict):
+            prompt, _, _, _ = _offline_prompt_from_scene(item)
+            return prompt.strip()
+        return ""
+
+    parsed = _extract_first_json_value(text)
+    candidates = None
+    if isinstance(parsed, list):
+        candidates = parsed
+    elif isinstance(parsed, dict):
+        for key in ("positive_prompts", "prompts", "shots", "scenes"):
+            value = parsed.get(key)
+            if isinstance(value, list):
+                candidates = value
+                break
+        if candidates is None:
+            single_prompt = prompt_from_item(parsed)
+            if single_prompt:
+                candidates = [single_prompt]
+
+    if candidates is not None:
+        prompts = [prompt_from_item(item) for item in candidates]
+        prompts = [prompt for prompt in prompts if prompt]
+        if prompts:
+            return prompts
+
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    if re.search(r"(?m)^\s*(?:-{3,}|={3,}|SCENE_BREAK)\s*$", normalized, re.I):
+        blocks = re.split(
+            r"(?mi)^\s*(?:-{3,}|={3,}|SCENE_BREAK)\s*$",
+            normalized,
+        )
+    elif re.search(r"\n\s*\n", normalized):
+        blocks = re.split(r"\n\s*\n+", normalized)
+    else:
+        blocks = normalized.splitlines()
+
+    prompts = []
+    for block in blocks:
+        prompt = block.strip()
+        if not prompt:
+            continue
+        prompt = re.sub(r"^\s*(?:[-*]\s+|\d{1,3}[.)、]\s*)", "", prompt)
+        prompt = prompt.strip()
+        if prompt.endswith(","):
+            prompt = prompt[:-1].rstrip()
+        if len(prompt) >= 2 and prompt[0] == prompt[-1] and prompt[0] in {'"', "'"}:
+            prompt = prompt[1:-1].strip()
+        if prompt:
+            prompts.append(prompt)
+
+    if not prompts:
+        raise ValueError(
+            "No usable manual storyboard prompts were found. Paste a JSON array, "
+            "put one prompt on each line, or separate multiline prompts with ---."
+        )
+    return prompts
+
+
 REF2V_REFERENCE_MODES = (
     "one_picture_per_shot",
     "first_picture_for_all_shots",
@@ -2244,6 +2312,87 @@ class RH_OfflineStoryboardParser_Node:
             "aspect_ratio": ratio,
         }
         return positive, negative, _json_text(storyboard), requested_count
+
+
+class RH_StoryboardPromptSource_Node:
+    """Lazily choose generated prompts or a user-edited pasted prompt list."""
+
+    AUTO_MODE = "自动 LLM"
+    MANUAL_MODE = "手动粘贴"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "source_mode": (
+                    (cls.AUTO_MODE, cls.MANUAL_MODE),
+                    {
+                        "default": cls.AUTO_MODE,
+                        "tooltip": "手动粘贴模式不会请求 automatic_prompts，因此不会运行上游 Qwen/LLM。",
+                    },
+                ),
+                "manual_prompts": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "",
+                        "placeholder": "支持 JSON 数组、每镜一行；多行提示词之间用 --- 分隔",
+                    },
+                ),
+            },
+            "optional": {
+                "automatic_prompts": ("STRING", {"lazy": True, "forceInput": True}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "INT", "STRING")
+    RETURN_NAMES = ("selected_prompts", "scene_count", "active_source")
+    OUTPUT_IS_LIST = (True, False, False)
+    INPUT_IS_LIST = True
+    FUNCTION = "select_prompts"
+    CATEGORY = "Runninghub/Storyboard"
+
+    @staticmethod
+    def _first(value):
+        if isinstance(value, (list, tuple)):
+            return value[0] if value else None
+        return value
+
+    def check_lazy_status(
+        self,
+        source_mode,
+        manual_prompts,
+        automatic_prompts=None,
+    ):
+        mode = str(self._first(source_mode) or self.AUTO_MODE)
+        if mode == self.AUTO_MODE and automatic_prompts is None:
+            return ["automatic_prompts"]
+        return []
+
+    def select_prompts(
+        self,
+        source_mode,
+        manual_prompts,
+        automatic_prompts=None,
+    ):
+        mode = str(self._first(source_mode) or self.AUTO_MODE)
+        if mode == self.MANUAL_MODE:
+            prompts = parse_manual_storyboard_prompts(self._first(manual_prompts))
+        else:
+            if automatic_prompts is None:
+                raise ValueError(
+                    "Automatic prompt mode is selected, but automatic_prompts is not connected."
+                )
+            values = (
+                list(automatic_prompts)
+                if isinstance(automatic_prompts, (list, tuple))
+                else [automatic_prompts]
+            )
+            prompts = [str(value or "").strip() for value in values]
+            prompts = [prompt for prompt in prompts if prompt]
+            if not prompts:
+                raise ValueError("The automatic storyboard prompt list is empty.")
+        return prompts, len(prompts), mode
 
 
 class RH_StoryboardSceneSave_Node:
