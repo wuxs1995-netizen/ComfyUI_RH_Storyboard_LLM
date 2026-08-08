@@ -100,6 +100,7 @@ The MiniMax H3 adapter nodes pass generated storyboard frames directly to DaSiWa
 - `RH_STORYBOARD_IMAGE_COLLECTOR` gathers ComfyUI's list-mapped storyboard `IMAGE` results in scene order.
 - `RH_MINIMAX_H3_SETTINGS` exposes one shared mode, width, height, duration, reference-size policy and REF2VA image limit.
 - `RH_MINIMAX_H3_STORYBOARD_GUIDE` builds the `MINIMAX_H3_DIRECTOR_GUIDE` consumed by DaSiWa's native guide nodes.
+- `RH_MINIMAX_H3_MODEL_SELECTOR` reads the mode from that guide inside the DaSiWa subgraph, avoiding unsupported external combo-to-subgraph enum links.
 
 Image mapping depends on the selected mode: `T2VA` uses no image, `I2VA` uses the first storyboard frame, `L2VA` uses the last frame, `FL2VA` uses the first and last frames, and `REF2VA` uses up to nine references sampled across the complete storyboard while preserving both endpoints.
 

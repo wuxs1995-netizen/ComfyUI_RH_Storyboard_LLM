@@ -9,6 +9,7 @@ from node import (
     RH_ConfigurableStoryboardContinuity_Node,
     RH_ConfigurableStoryboard_Node,
     RH_MultiSceneContinuityLLM_Node,
+    RH_MiniMaxH3ModelSelector_Node,
     RH_MiniMaxH3StoryboardGuide_Node,
     RH_MiniMaxH3Settings_Node,
     RH_OfflineStoryboardContinuityParser_Node,
@@ -50,11 +51,38 @@ class FakeImageBatch:
 
 
 class OfflineStoryboardParserTests(unittest.TestCase):
+    def test_minimax_model_selector_uses_guide_mode_and_lazy_model(self):
+        selector = RH_MiniMaxH3ModelSelector_Node()
+        self.assertEqual(
+            selector.check_lazy_status({"mode": "REF2VA"}),
+            ["ref2va_model"],
+        )
+        self.assertEqual(
+            selector.check_lazy_status({"mode": "FL2VA"}),
+            ["fl2va_model"],
+        )
+        self.assertEqual(
+            selector.select_model(
+                {"mode": "REF2VA"},
+                fl2va_model="fl-model",
+                ref2va_model="ref-model",
+            ),
+            ("ref-model", False, True),
+        )
+        self.assertEqual(
+            selector.select_model(
+                {"mode": "I2VA"},
+                fl2va_model="fl-model",
+                ref2va_model="ref-model",
+            ),
+            ("fl-model", True, False),
+        )
+
     def test_minimax_settings_exposes_linkable_validated_values(self):
         result = RH_MiniMaxH3Settings_Node().values(
             "ref2va", 1024, 576, 18, "max", 99
         )
-        self.assertEqual(result, ("REF2VA", 1024, 576, 18, "max", 9, "REF2VA"))
+        self.assertEqual(result, ("REF2VA", 1024, 576, 18, "max", 9))
         self.assertEqual(
             RH_MiniMaxH3Settings_Node.RETURN_NAMES,
             (
@@ -64,7 +92,6 @@ class OfflineStoryboardParserTests(unittest.TestCase):
                 "duration",
                 "ref_image_size",
                 "max_reference_images",
-                "director_mode",
             ),
         )
         self.assertEqual(
@@ -904,18 +931,24 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             ["T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA"],
         )
         self.assertEqual(nodes[1393]["outputs"][4]["type"], ["match", "max"])
-        self.assertEqual(nodes[1393]["outputs"][6]["name"], "director_mode")
-        self.assertEqual(nodes[1393]["outputs"][6]["type"], "COMBO")
+        self.assertEqual(len(nodes[1393]["outputs"]), 6)
         self.assertEqual(
             nodes[1394]["inputs"][1]["type"],
             ["T2VA", "I2VA", "FL2VA", "L2VA", "REF2VA"],
         )
         self.assertEqual(nodes[1394]["inputs"][9]["type"], ["match", "max"])
         self.assertEqual(nodes[1394]["inputs"][0]["link"], 30175)
-        self.assertEqual(nodes[1389]["inputs"][0]["link"], 30188)
-        self.assertEqual(nodes[1389]["inputs"][0]["type"], "COMBO")
-        self.assertEqual(nodes[1389]["inputs"][2]["link"], 30189)
-        self.assertEqual(nodes[1389]["inputs"][7]["link"], 30186)
+        self.assertEqual(
+            [item["name"] for item in nodes[1389]["inputs"]],
+            [
+                "resolution_preset",
+                "aspect_preset_when_not_image",
+                "noise_seed",
+                "filename_prefix",
+                "guide",
+            ],
+        )
+        self.assertEqual(nodes[1389]["inputs"][4]["link"], 30186)
 
         minimax = next(
             item
@@ -927,11 +960,16 @@ class OfflineStoryboardParserTests(unittest.TestCase):
             for link in minimax["links"]
             if link["type"] == "MINIMAX_H3_DIRECTOR_GUIDE"
         ]
-        self.assertEqual([link["id"] for link in guide_links], [6010])
-        self.assertEqual(guide_links[0]["origin_id"], -10)
-        self.assertEqual(guide_links[0]["target_id"], 1512)
+        self.assertEqual([link["id"] for link in guide_links], [6010, 6011])
+        self.assertEqual({link["origin_id"] for link in guide_links}, {-10})
+        self.assertEqual({link["target_id"] for link in guide_links}, {1512, 2704})
+        selector = next(node for node in minimax["nodes"] if node["id"] == 2704)
+        self.assertEqual(selector["type"], "RH_MINIMAX_H3_MODEL_SELECTOR")
+        self.assertFalse(any(node.get("type") == "MiniMaxH3Director" for node in minimax["nodes"]))
         root_links = {link[0]: link for link in workflow["links"]}
-        self.assertEqual(root_links[30188][1:6], [1393, 6, 1389, 0, "COMBO"])
+        self.assertNotIn(30172, root_links)
+        self.assertNotIn(30188, root_links)
+        self.assertNotIn(30189, root_links)
         self.assertNotIn("10eros", workflow_path.read_text(encoding="utf-8").lower())
 
     def test_optional_i2v_workflow_uses_resolution_master_and_has_no_temp_outputs(self):

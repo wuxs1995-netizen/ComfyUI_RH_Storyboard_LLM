@@ -1604,6 +1604,50 @@ class RH_StoryboardImageCollector_Node:
         return frames, len(frames)
 
 
+class RH_MiniMaxH3ModelSelector_Node:
+    """Select DaSiWa's FL2VA or REF2VA model from an already-built guide."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "guide": ("MINIMAX_H3_DIRECTOR_GUIDE", {"forceInput": True}),
+            },
+            "optional": {
+                "fl2va_model": ("MODEL", {"lazy": True}),
+                "ref2va_model": ("MODEL", {"lazy": True}),
+            },
+        }
+
+    RETURN_TYPES = ("MODEL", "BOOLEAN", "BOOLEAN")
+    RETURN_NAMES = ("model", "fl2va_requested", "ref2va_requested")
+    FUNCTION = "select_model"
+    CATEGORY = "Runninghub/Storyboard/Video"
+
+    @staticmethod
+    def _mode(guide):
+        if not isinstance(guide, dict):
+            raise ValueError("MiniMax H3 model selector requires a Director guide dictionary.")
+        mode = str(guide.get("mode") or "FL2VA").upper()
+        if mode not in MINIMAX_H3_MODES:
+            raise ValueError(f"Unsupported MiniMax H3 mode: {mode}")
+        return mode
+
+    def check_lazy_status(self, guide, fl2va_model=None, ref2va_model=None):
+        mode = self._mode(guide)
+        selected_name = "ref2va_model" if mode == "REF2VA" else "fl2va_model"
+        selected_model = ref2va_model if mode == "REF2VA" else fl2va_model
+        return [selected_name] if selected_model is None else []
+
+    def select_model(self, guide, fl2va_model=None, ref2va_model=None):
+        mode = self._mode(guide)
+        selected_model = ref2va_model if mode == "REF2VA" else fl2va_model
+        if selected_model is None:
+            requested = "ref2va_model" if mode == "REF2VA" else "fl2va_model"
+            raise ValueError(f"MiniMax H3 model selector did not receive {requested}.")
+        return selected_model, mode != "REF2VA", mode == "REF2VA"
+
+
 class RH_MiniMaxH3Settings_Node:
     """Expose MiniMax mode and reference settings as linkable scalar outputs."""
 
@@ -1632,7 +1676,6 @@ class RH_MiniMaxH3Settings_Node:
         "INT",
         MINIMAX_H3_REF_IMAGE_SIZES,
         "INT",
-        "COMBO",
     )
     RETURN_NAMES = (
         "mode",
@@ -1641,7 +1684,6 @@ class RH_MiniMaxH3Settings_Node:
         "duration",
         "ref_image_size",
         "max_reference_images",
-        "director_mode",
     )
     FUNCTION = "values"
     CATEGORY = "Runninghub/Storyboard/Video"
@@ -1657,7 +1699,6 @@ class RH_MiniMaxH3Settings_Node:
             max(1, int(duration)),
             str(ref_image_size or "match"),
             max(1, min(9, int(max_reference_images))),
-            mode,
         )
 
 
